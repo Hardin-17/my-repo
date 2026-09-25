@@ -9,9 +9,11 @@ const {
   listNetworkPartitions,
 } = require('../controllers/chaosController');
 const { protect } = require('../middleware/authMiddleware');
+const { chaosLimiter } = require('../middleware/rateLimitMiddleware');
 
-// All chaos operations require JWT authentication
+// All chaos operations require JWT authentication and rate limiting
 router.use(protect);
+router.use(chaosLimiter);
 
 router.post('/node-failure', nodeFailure);
 router.post('/node-recover', nodeRecover);

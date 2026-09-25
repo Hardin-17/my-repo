@@ -20,9 +20,20 @@ class AssistantService {
     }
 
     const clusterContext = await getClusterContext(userId);
+    const hasApiKey = !!(config.aiApiKey || config.geminiApiKey);
 
-    // If Gemini API Key is provided, attempt LLM call
-    if (config.geminiApiKey) {
+    // If in production without an AI key and not in demo mode, report unconfigured per spec
+    if (!hasApiKey && config.nodeEnv === 'production' && !config.demoMode) {
+      return {
+        reply: 'VaultOps AI is not configured. Please set the AI_API_KEY environment variable in your deployment configuration to enable the autonomous copilot.',
+        proposals: [],
+        clusterContext,
+        modelUsed: 'unconfigured',
+      };
+    }
+
+    // If API Key is provided, attempt LLM call
+    if (hasApiKey) {
       try {
         const llmResult = await this.callGemini({
           message,
@@ -40,7 +51,7 @@ class AssistantService {
       }
     }
 
-    // Deterministic Intelligent Diagnostic Engine
+    // Deterministic Intelligent Diagnostic Engine (Dev/Test/Demo fallback)
     const ruleResult = this.generateRuleBasedResponse(message, clusterContext);
 
     await logActivity({

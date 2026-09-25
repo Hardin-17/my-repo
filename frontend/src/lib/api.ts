@@ -43,7 +43,10 @@ export async function apiRequest<T = any>(
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const message = data?.message || `Request failed with status ${res.status}`;
+      const message =
+        data?.message ||
+        data?.error?.message ||
+        `Request failed with status ${res.status}`;
       throw new ApiError(message, res.status, data?.errors);
     }
 
@@ -72,7 +75,7 @@ export async function downloadFile(endpoint: string, fallbackFilename: string = 
   if (!response.ok) {
     const errorJson = await response.json().catch(() => null);
     throw new ApiError(
-      errorJson?.message || `Download failed with status ${response.status}`,
+      errorJson?.message || errorJson?.error?.message || `Download failed with status ${response.status}`,
       response.status
     );
   }
@@ -107,5 +110,13 @@ export const api = {
       body: isFormData ? body : body ? JSON.stringify(body) : undefined,
     });
   },
+  put: <T = any>(endpoint: string, body?: any) => {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    return apiRequest<T>(endpoint, {
+      method: 'PUT',
+      body: isFormData ? body : body ? JSON.stringify(body) : undefined,
+    });
+  },
+  delete: <T = any>(endpoint: string) => apiRequest<T>(endpoint, { method: 'DELETE' }),
   download: downloadFile,
 };

@@ -1,200 +1,246 @@
 # VAULT: Fault-Tolerant Distributed Object Storage System
 
-VAULT is a high-availability, fault-tolerant distributed object storage control plane and engine designed for automated replica self-healing, cryptographic SHA-256 data integrity verification, silent bit-rot detection, configurable quorum write/read policies, partial network partition resilience, background storage rebalancing, and autonomous AI-assisted operations.
+> A production-hardened, fault-tolerant distributed object storage engine and control plane featuring quorum-based durability policies, automated replica self-healing, cryptographic SHA-256 integrity verification, network partition resilience, background rebalancing, and an autonomous AI operations co-pilot.
 
 ---
 
-## Phase 4 Completed: Distributed-System Completion
+## Problem Statement
 
-Phase 4 completes the major distributed-systems capabilities of VAULT:
-1. **Configurable Write Durability Policies (`ONE`, `QUORUM`, `ALL`):**
-   - Controlled write acknowledgements:
-     - `ONE`: Fast write requiring $\ge 1$ successful replica write.
-     - `QUORUM`: Majority consensus requiring $\lfloor RF/2 \rfloor + 1$ successful writes (e.g. 2/3 or 3/5 acks).
-     - `ALL`: Strict durability requiring 100% replica writes.
-   - Quorum-aware write rollback: If insufficient nodes acknowledge due to network partitions or outages, partial writes are atomically cleaned up from disk and rejected with `503 Service Unavailable`.
-2. **Configurable Read Policies (`ANY_HEALTHY`, `LOWEST_LATENCY`, `QUORUM`):**
-   - `ANY_HEALTHY`: Serves the object stream from any online, healthy replica.
-   - `LOWEST_LATENCY`: Selects the reachable healthy node with the lowest measured ping latency.
-   - `QUORUM`: Contacts a majority quorum ($\lfloor RF/2 \rfloor + 1$) of reachable healthy replicas, confirms consensus on checksum and version, and serves the stream.
-3. **Concurrent Writes & Object Versioning (`version: 1 -> 2 -> 3`):**
-   - Atomic optimistic concurrency control on version increments (`PUT /api/objects/:id`).
-   - Prevents concurrent overwrite conflicts (HTTP 409 Conflict if stale version submitted).
-   - Replicas tracked per-version with individual checksums and health states.
-4. **Partial Network Partition Simulation (`POST /api/chaos/network-partition`, `/recover`):**
-   - Simulates WAN fiber cuts and datacenter network splits between arbitrary node groups (e.g. Group A `[node-01, node-02]` vs Group B `[node-03, node-04, node-05]`).
-   - Blocks inter-partition network communication while preserving `ONLINE` node health (nodes do not falsely appear crashed).
-   - Evaluates quorum failures when partitioned nodes cannot satisfy the requested durability or read policy.
-   - 1-click network partition recovery restoring full mesh reachability.
-5. **Background Storage Rebalancing (`RebalanceService`):**
-   - Automatic cluster skew detection (`REBALANCE_THRESHOLD_PERCENT=20`).
-   - Identifies overloaded and underloaded nodes across the mesh.
-   - **Safe Copy-Then-Verify Migration:**
-     1. Streams replica from overloaded node to target node.
-     2. Verifies SHA-256 checksum on target node against expected signature.
-     3. Atomically updates `VaultObject` replica metadata.
-     4. Deletes source replica only after target persistence and metadata update succeed.
-     5. Updates both nodes' disk capacity tracking and logs `REBALANCE_COMPLETED`.
-6. **Metadata & Replica Consistency Reconciliation (`ReconciliationService`):**
-   - Detects version mismatches, physical file absence, disk checksum deviations, and under-replicated objects.
-   - Automatically schedules self-healing repair jobs to reconcile inconsistent replicas from healthy peers.
-7. **VaultOps AI Assistant (`POST /api/ai/chat`, `POST /api/ai/execute-action`):**
-   - Autonomous real-time operations co-pilot accessible via the floating assistant drawer.
-   - Ingests sanitized live cluster telemetry (node latencies, partition states, skew spreads, degraded objects).
-   - Proposes structured operational interventions (`ACTION_PROPOSAL`) with mandatory operator confirmation before execution.
-   - Whitelist-enforced safe execution API: `TRIGGER_REBALANCE`, `RECOVER_NODE`, `TRIGGER_INTEGRITY_SCAN`, `RECOVER_PARTITION`, `RUN_RECONCILIATION`.
-   - Dual-engine architecture: Google Gemini API integration with offline deterministic rule-based expert engine fallback.
-8. **Phase 4 Telemetry & Metrics Enhancements:**
-   - Real-time **Storage Overhead Ratio** (`overheadRatio`, e.g. `3.00x` with percentage).
-   - **Recovery Timing Analytics** (fastest, slowest, and average recovery time in ms).
-   - Active network partition counters and blocked link statistics.
-   - Write durability policy distribution metrics.
+Modern cloud infrastructure relies on distributed storage layers that must reliably persist and serve mission-critical data over unreliable networks and independently failing hardware. Traditional storage solutions often suffer from:
+- **Silent data corruption (bit-rot)** undetected until read time.
+- **Node churn and split-brain scenarios** during network partitions.
+- **Under-replicated vulnerability windows** when storage drives crash.
+- **Uneven disk utilization skew** as objects are written and deleted.
+- **Inconsistent replica versions** caused by concurrent writes and partial network failures.
+
+**VAULT** addresses these challenges by implementing an active, self-healing distributed architecture that continuously monitors replica health, mathematically proves payload integrity, enforces configurable durability quorums, automatically rebalances cluster storage, and orchestrates live incident recovery.
 
 ---
 
-## Directory Structure
+## System Architecture
 
-```text
-VAULT/
-├── README.md
-├── backend/
-│   ├── .env
-│   ├── package.json
-│   ├── storage/                      # Isolated logical storage node volumes
-│   │   ├── node-01/
-│   │   ├── node-02/
-│   │   ├── node-03/
-│   │   ├── node-04/
-│   │   └── node-05/
-│   ├── test-backend.js               # Phase 1 test suite
-│   ├── test-phase2.js                # Phase 2 test suite
-│   ├── test-phase3.js                # Phase 3 test suite
-│   ├── test-phase4.js                # Phase 4 53-point test suite (ALL PASSING)
-│   └── src/
-│       ├── config/
-│       │   ├── db.js                 # MongoDB connection with embedded fallback
-│       │   └── env.js                # Environment settings & policy defaults
-│       ├── controllers/
-│       │   ├── aiController.js       # VaultOps AI chat and action execution
-│       │   ├── authController.js
-│       │   ├── chaosController.js    # Node failure, corruption & network partitions
-│       │   ├── healthController.js
-│       │   ├── integrityController.js# SHA-256 integrity verification
-│       │   ├── metricsController.js  # Cluster metrics, overhead & recovery timings
-│       │   ├── nodeController.js
-│       │   ├── objectController.js   # Versioned upload, update, download
-│       │   ├── rebalanceController.js# Storage skew & migration trigger
-│       │   ├── reconciliationController.js # Consistency scan & reconcile
-│       │   └── recoveryController.js # Self-healing repair pipeline
-│       ├── middleware/
-│       │   ├── authMiddleware.js     # JWT route protection
-│       │   ├── errorMiddleware.js
-│       │   └── validateMiddleware.js
-│       ├── models/
-│       │   ├── Activity.js           # Audit and event journal
-│       │   ├── NetworkPartition.js   # Active partition tracking model
-│       │   ├── Node.js               # Storage node schema
-│       │   ├── RepairJob.js          # Self-healing job tracking model
-│       │   ├── User.js
-│       │   └── VaultObject.js        # Object, replica, and policy schema
-│       ├── routes/
-│       │   ├── aiRoutes.js
-│       │   ├── authRoutes.js
-│       │   ├── chaosRoutes.js
-│       │   ├── healthRoutes.js
-│       │   ├── index.js
-│       │   ├── integrityRoutes.js
-│       │   ├── metricsRoutes.js
-│       │   ├── nodeRoutes.js
-│       │   ├── objectRoutes.js
-│       │   ├── rebalanceRoutes.js
-│       │   ├── reconciliationRoutes.js
-│       │   └── recoveryRoutes.js
-│       ├── services/
-│       │   ├── activityService.js
-│       │   ├── aiContextService.js   # Sanitized cluster telemetry compiler
-│       │   ├── assistantService.js   # AI chat & confirmed action dispatcher
-│       │   ├── authService.js
-│       │   ├── chaosService.js
-│       │   ├── integrityService.js   # SHA-256 scrubber
-│       │   ├── networkService.js     # Network partition mesh manager
-│       │   ├── nodeService.js
-│       │   ├── objectService.js      # Policy-aware write/read & versioning
-│       │   ├── rebalanceService.js   # Safe copy-then-verify rebalancing
-│       │   ├── reconciliationService.js # Inconsistency detector & reconciler
-│       │   ├── repairService.js      # Concurrency-controlled self-healing worker
-│       │   └── storageNodeService.js # Disk filesystem operations with path traversal guards
-│       └── server.js
-└── frontend/
-    ├── package.json
-    ├── next.config.js
-    └── src/
-        ├── app/
-        │   ├── dashboard/
-        │   │   ├── chaos/page.tsx    # Chaos Lab with Network Partition controls
-        │   │   ├── nodes/page.tsx    # Node monitoring & topology
-        │   │   ├── objects/page.tsx  # Object explorer & replica inspector
-        │   │   └── page.tsx          # Real-time metrics & topology dashboard
-        │   ├── login/page.tsx
-        │   └── register/page.tsx
-        ├── components/
-        │   ├── objects/
-        │   │   └── UploadModal.tsx   # Durability & Read policy upload controls
-        │   └── ui/
-        │       └── FloatingAssistantButton.tsx # Real-time VaultOps AI copilot drawer
-        └── types/
-            └── index.ts              # Phase 4 TypeScript definitions
+```
+                       ┌─────────────────────────────────────────┐
+                       │          Next.js 14 Frontend            │
+                       │   (TailwindCSS, Framer Motion, Lucide)  │
+                       │           Deployed on Vercel            │
+                       └────────────────────┬────────────────────┘
+                                            │ HTTPS / REST
+                                            ▼
+                       ┌─────────────────────────────────────────┐
+                       │        Express.js Backend API           │
+                       │  (Helmet, Rate Limits, Strict CORS)     │
+                       │      Deployed on Render / Railway       │
+                       └───┬───────────────┬─────────────────┬───┘
+                           │               │                 │
+            Metadata Store │               │ Storage Mesh    │ AI Diagnostics
+                           ▼               ▼                 ▼
+             ┌───────────────────┐ ┌───────────────┐ ┌───────────────────┐
+             │   MongoDB Atlas   │ │ Storage Nodes │ │    VaultOps AI    │
+             │ (Objects, Nodes,  │ │ (node-01..05) │ │ (Gemini API with  │
+             │  Repairs, Part.)  │ │ Isolated Root │ │ Deterministic     │
+             └───────────────────┘ └───────────────┘ │ Fallback Engine)  │
+                                                     └───────────────────┘
+```
+
+### Core Subsystems:
+1. **Object Storage Engine (`objectService.js`):** Coordinates multi-node streaming writes, calculates SHA-256 digests on the fly, checks quorum consensus, and manages optimistic concurrency object versioning.
+2. **Cluster Health & Failure Detector (`nodeService.js`, `chaosService.js`):** Continuously monitors node availability, simulates crashes, and isolates offline nodes from the routing mesh.
+3. **Cryptographic Integrity Scrubber (`integrityService.js`):** Performs byte-level SHA-256 disk audits, detecting silent data corruption and flagging damaged replicas for quarantine.
+4. **Autonomous Self-Healing Pipeline (`repairService.js`):** Background worker pool that detects under-replicated or corrupted objects and orchestrates concurrent repairs from verified healthy peers.
+5. **Network Partition Simulator (`networkService.js`):** Simulates datacenter network splits and fiber cuts between arbitrary node groups, testing partition-tolerant quorum behavior.
+6. **Storage Rebalancing Engine (`rebalanceService.js`):** Computes cluster-wide utilization skew and executes safe copy-then-verify migrations to level storage distribution.
+7. **VaultOps AI Assistant (`assistantService.js`):** Operations co-pilot that ingests sanitized cluster telemetry, diagnoses anomalies, and proposes verified operational actions with mandatory human-in-the-loop confirmation.
+
+---
+
+## Core Features
+
+- **Configurable Write Durability:**
+  - `ONE`: Fast acknowledgement upon single replica write ($\ge 1$).
+  - `QUORUM`: Majority consensus requiring $\lfloor RF/2 \rfloor + 1$ node acknowledgements with automatic atomic rollback on quorum failure.
+  - `ALL`: Strict durability requiring 100% replica writes.
+- **Configurable Read Policies:**
+  - `ANY_HEALTHY`: Serves from any available healthy replica.
+  - `LOWEST_LATENCY`: Routes to the reachable replica with the lowest measured ping latency.
+  - `QUORUM`: Confirms version and checksum consensus across majority replicas before streaming.
+- **Object Versioning & Optimistic Concurrency:** Atomic version increments (`v1 -> v2`) preventing concurrent overwrite conflicts.
+- **Self-Healing & Auto-Repair:** Automatic detection of under-replicated objects upon node failure and autonomous reconstruction on surviving nodes.
+- **Bit-Rot Detection & Quarantine:** Real-time SHA-256 scrubber detects injected byte corruption, marks the replica degraded, and initiates healing.
+- **Network Partition Tolerance:** Simulates network splits (e.g., Partition Group A vs Group B) and enforces quorum boundaries.
+- **Copy-Then-Verify Storage Rebalancing:** Proactively detects disk skew ($> 20\%$) and migrates replicas from overloaded to underloaded nodes without downtime.
+- **Production Hardened:** Strict CORS, Helmet security headers, rate limiting on sensitive routes, correlation request IDs (`x-request-id`), structured logging, and Kubernetes-compatible health probes (`/api/health`, `/api/health/live`, `/api/health/ready`).
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Framer Motion, Lucide React |
+| **Backend** | Node.js (v18+), Express.js, Helmet, Express Rate Limit, CORS, Multer |
+| **Database** | MongoDB Atlas / Local MongoDB, Mongoose ODM |
+| **AI Engine** | Google Gemini API (`@google/genai` / REST) with offline deterministic fallback |
+| **Testing** | Node.js custom test harness spanning 5 test suites (110+ passing tests) |
+
+---
+
+## Local Setup
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm (v9 or higher)
+- MongoDB instance (local or MongoDB Atlas connection string)
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/your-username/vault.git
+cd vault
+```
+
+### 2. Backend Setup
+```bash
+cd backend
+npm install
+cp .env.example .env
+```
+
+Configure `backend/.env`:
+```env
+PORT=5000
+NODE_ENV=development
+MONGODB_URI=mongodb://localhost:27017/vault
+JWT_SECRET=your-secure-jwt-secret-min-32-chars
+CORS_ORIGIN=http://localhost:3000
+DEMO_MODE=true
+# Optional: GEMINI_API_KEY=your-api-key
+```
+
+Start the backend:
+```bash
+npm run dev
+# Backend runs on http://localhost:5000
+```
+
+### 3. Frontend Setup
+```bash
+cd ../frontend
+npm install
+cp .env.example .env.local
+```
+
+Configure `frontend/.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+Start the frontend:
+```bash
+npm run dev
+# Frontend runs on http://localhost:3000
 ```
 
 ---
 
-## API Endpoints Reference
+## Environment Variables Reference
 
-### Distributed Operations & Durability
-- `POST /api/objects` — Upload new object with `replicationFactor`, `durabilityPolicy` (`ONE`, `QUORUM`, `ALL`), and `readPolicy` (`ANY_HEALTHY`, `LOWEST_LATENCY`, `QUORUM`).
-- `PUT /api/objects/:id` — Atomic optimistic concurrency update to new version (`v1 -> v2`).
-- `GET /api/objects/:id/download?readPolicy=...` — Download object honoring specified read policy.
+### Backend (`backend/.env`)
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `PORT` | No | `5000` | Port for the Express backend server |
+| `NODE_ENV` | Yes | `development` | Runtime environment (`development`, `production`, `test`) |
+| `MONGODB_URI` | Yes | — | MongoDB connection string (Atlas or local) |
+| `JWT_SECRET` | Yes | — | Secret key for JWT signing (min 32 characters in production) |
+| `CORS_ORIGIN` | Yes | `http://localhost:3000` | Allowed frontend origin for CORS |
+| `STORAGE_BASE_PATH`| No | `./storage` | Base path for isolated storage node directories |
+| `DEMO_MODE` | No | `false` | Enables demo seeds and the `/api/demo/reset` endpoint |
+| `GEMINI_API_KEY` | No | — | Google Gemini API Key for VaultOps AI Assistant |
+| `AI_PROVIDER` | No | `gemini` | AI provider identifier |
+| `AI_MODEL` | No | `gemini-1.5-flash` | LLM model identifier |
 
-### Chaos Engineering & Network Partitions
-- `POST /api/chaos/node-failure` — Terminate node (`nodeId`, `reason`).
-- `POST /api/chaos/node-recover` — Bring node back online (`nodeId`).
-- `POST /api/chaos/corrupt-replica` — Inject controlled bit-rot byte inversion (`objectId`, `nodeId`).
-- `POST /api/chaos/network-partition` — Create partition separating node groups (`groups: [['node-01','node-02'],['node-03','node-04','node-05']]`).
-- `POST /api/chaos/network-partition/recover` — Recover active partition (`partitionId` or all).
-- `GET /api/chaos/network-partitions` — List active and historical network partitions.
-
-### Storage Rebalancing & Reconciliation
-- `GET /api/rebalance/status` — Get storage skew analysis and utilization spread across nodes.
-- `POST /api/rebalance/trigger` — Trigger copy-then-verify rebalancing migration (`maxMoves: 5`).
-- `POST /api/reconciliation/scan` — Scan metadata against node disks for inconsistencies.
-- `POST /api/reconciliation/reconcile` — Reconcile inconsistencies and schedule repair jobs.
-
-### VaultOps AI Assistant
-- `POST /api/ai/chat` — Natural language telemetry queries, diagnosis, and action proposals (`message`, `conversationHistory`).
-- `POST /api/ai/execute-action` — Execute operator-confirmed proposal (`action`, `payload`). Whitelisted actions only.
-
-### Metrics & Recovery
-- `GET /api/metrics` — Overall cluster health, SLA, storage overhead ratio, recovery timings, network partitions.
-- `GET /api/recovery/jobs` — Active and completed self-healing repair jobs.
-- `GET /api/recovery/metrics` — Repair telemetry and failure counts.
+### Frontend (`frontend/.env.local`)
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:5000/api` | Base URL pointing to the backend API |
 
 ---
 
-## Running the Verification Test Suites
+## Deployment Instructions
+
+### 1. Database: MongoDB Atlas
+1. Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/atlas).
+2. Create a database user with read/write privileges.
+3. Whitelist Network Access: Allow access from `0.0.0.0/0` (or your backend provider's IP range).
+4. Copy the connection string: `mongodb+srv://<user>:<password>@cluster.mongodb.net/vault?retryWrites=true&w=majority`.
+
+### 2. Backend: Render or Railway
+1. **Repository:** Connect your GitHub repository.
+2. **Root Directory:** Set to `backend`.
+3. **Build Command:** `npm install`
+4. **Start Command:** `npm start`
+5. **Environment Variables:**
+   - `NODE_ENV=production`
+   - `PORT=5000` (or leave default assigned by platform)
+   - `MONGODB_URI=<your-atlas-uri>`
+   - `JWT_SECRET=<generated-secure-random-32-char-string>`
+   - `CORS_ORIGIN=https://<your-vercel-domain>.vercel.app`
+   - `DEMO_MODE=true` (enables demo reset during hackathon evaluations)
+   - `GEMINI_API_KEY=<optional-gemini-key>`
+
+### 3. Frontend: Vercel
+1. Import repository into [Vercel](https://vercel.com).
+2. Set **Root Directory** to `frontend`.
+3. **Framework Preset:** Next.js.
+4. **Environment Variables:**
+   - `NEXT_PUBLIC_API_URL=https://<your-backend-app>.onrender.com/api`
+5. Deploy.
+6. Copy the Vercel deployment URL and update `CORS_ORIGIN` in your backend environment variables.
+
+---
+
+## Verification Test Suites
+
+VAULT includes comprehensive, automated test suites verifying distributed system invariants across all phases:
 
 ```bash
-# Phase 1 Baseline Tests
-cd backend && node test-backend.js
+cd backend
 
-# Phase 2 Replicated Storage & Placement Tests (19 tests)
+# Phase 1: Authentication & Node Management
+node test-backend.js
+
+# Phase 2: Object Placement & Replication (19 tests)
 node test-phase2.js
 
-# Phase 3 Fault Tolerance & Self-Healing Tests (14 tests)
+# Phase 3: Fault Tolerance, Corruption & Auto-Repair (14 tests)
 node test-phase3.js
 
-# Phase 4 Distributed Systems Completion Tests (53 tests)
+# Phase 4: Quorums, Partitions, Rebalancing, AI & Metrics (53 tests)
 node test-phase4.js
+
+# Phase 5: Production Hardening, Health Probes & Demo Readiness (25 tests)
+node test-phase5.js
 ```
 
-All 53 Phase 4 tests pass with 100% success rate.
-Production Next.js build passes with 0 errors across all 10 routes.
+**Results:** 100% test pass rate across all test suites (>110 passing assertions).
+
+---
+
+## Demonstration Script
+
+For a structured, live 5–7 minute walkthrough covering:
+1. Multi-node object upload with quorum durability
+2. Simulated node crashes and autonomous replica repair
+3. Silent bit-rot corruption detection via SHA-256 scrubbing
+4. Datacenter network partition isolation and recovery
+5. Storage rebalancing skew leveling
+6. VaultOps AI copilot diagnosis and confirmed action execution
+
+👉 Consult the full guide: **[DEMO_SCRIPT.md](DEMO_SCRIPT.md)**
+
+---
+
+## Known Limitations & Architecture Disclosure
+
+- **Simulated Node Storage Disks:** In this implementation, storage nodes (`node-01` through `node-05`) are simulated as isolated directory volumes within the backend host filesystem (`backend/storage/`).
+- **Persistence on Ephemeral Cloud Containers:** When deployed to stateless cloud containers (such as standard Render or Railway services without persistent volume attachments), files written to the local disk are ephemeral and reset upon container restarts. In enterprise production, each node would run as an independent microservice container with dedicated Persistent Volume Claims (PVCs) or cloud block storage attachments.
+- **Single Backend Control Plane:** The current control plane runs as a unified Node.js process coordinating the nodes. Multi-region masterless clustering would utilize a Raft consensus log across replicated control plane daemons.

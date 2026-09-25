@@ -11,6 +11,7 @@ const recoveryRoutes = require('./recoveryRoutes');
 const rebalanceRoutes = require('./rebalanceRoutes');
 const reconciliationRoutes = require('./reconciliationRoutes');
 const aiRoutes = require('./aiRoutes');
+const demoRoutes = require('./demoRoutes');
 
 // Mount routes
 router.use('/', healthRoutes); // Provides /api/health
@@ -25,5 +26,6 @@ router.use('/repair', recoveryRoutes); // Provides /api/repair/*
 router.use('/rebalance', rebalanceRoutes); // Provides /api/rebalance/*
 router.use('/reconciliation', reconciliationRoutes); // Provides /api/reconciliation/*
 router.use('/ai', aiRoutes); // Provides /api/ai/*
+router.use('/demo', demoRoutes); // Provides /api/demo/* (Dev/Demo reset)
 
 module.exports = router;
