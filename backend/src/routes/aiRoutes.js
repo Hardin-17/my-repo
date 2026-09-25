@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { verifyObject, scanAll } = require('../controllers/integrityController');
+const { chat, executeAction } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
 
-router.post('/verify/:objectId', verifyObject);
-router.post('/scan-all', scanAll);
+router.post('/chat', chat);
+router.post('/execute-action', executeAction);
 
 module.exports = router;

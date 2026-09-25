@@ -1,6 +1,7 @@
 const Node = require('../models/Node');
 const VaultObject = require('../models/VaultObject');
 const RepairJob = require('../models/RepairJob');
+const NetworkPartition = require('../models/NetworkPartition');
 const { getRecentActivities } = require('../services/activityService');
 const { successResponse, errorResponse } = require('../utils/response');
 
@@ -27,9 +28,13 @@ const getMetrics = async (req, res, next) => {
     let corruptedReplicas = 0;
     let logicalBytes = 0;
     let physicalBytes = 0;
+    const durabilityCounts = { ONE: 0, QUORUM: 0, ALL: 0 };
 
     userObjects.forEach((o) => {
       logicalBytes += o.size || 0;
+      const policy = o.durabilityPolicy || 'QUORUM';
+      durabilityCounts[policy] = (durabilityCounts[policy] || 0) + 1;
+
       if (o.replicas) {
         totalReplicas += o.replicas.length;
         o.replicas.forEach((r) => {
@@ -58,6 +63,40 @@ const getMetrics = async (req, res, next) => {
       logicalBytes > 0
         ? (((physicalBytes - logicalBytes) / logicalBytes) * 100).toFixed(1)
         : '0.0';
+    const overheadRatio =
+      logicalBytes > 0
+        ? (physicalBytes / logicalBytes).toFixed(2) + 'x'
+        : '1.00x';
+
+    // Recovery Timing Metrics
+    const completedJobs = await RepairJob.find({
+      status: 'COMPLETED',
+      startedAt: { $exists: true, $ne: null },
+      completedAt: { $exists: true, $ne: null },
+    }).lean();
+
+    let fastestRecoveryMs = null;
+    let slowestRecoveryMs = null;
+    let avgRecoveryMs = 0;
+
+    if (completedJobs.length > 0) {
+      let totalDuration = 0;
+      completedJobs.forEach((job) => {
+        const duration = new Date(job.completedAt).getTime() - new Date(job.startedAt).getTime();
+        const safeDuration = Math.max(0, duration);
+        totalDuration += safeDuration;
+        if (fastestRecoveryMs === null || safeDuration < fastestRecoveryMs) {
+          fastestRecoveryMs = safeDuration;
+        }
+        if (slowestRecoveryMs === null || safeDuration > slowestRecoveryMs) {
+          slowestRecoveryMs = safeDuration;
+        }
+      });
+      avgRecoveryMs = Math.round(totalDuration / completedJobs.length);
+    }
+
+    // Active Network Partitions
+    const activePartitions = await NetworkPartition.find({ status: 'ACTIVE' }).lean();
 
     const recentActivities = await getRecentActivities(20);
 
@@ -87,6 +126,7 @@ const getMetrics = async (req, res, next) => {
           logicalBytes,
           physicalBytes,
           overheadPercentage: `${overheadPercentage}%`,
+          overheadRatio,
         },
       },
       objects: {
@@ -96,10 +136,26 @@ const getMetrics = async (req, res, next) => {
         corrupted: corruptedObjects,
         totalReplicas,
         corruptedReplicas,
+        durabilityDistribution: durabilityCounts,
       },
       recovery: {
         activeRepairs,
         completedRepairs,
+        timing: {
+          fastestRecoveryMs: fastestRecoveryMs !== null ? fastestRecoveryMs : 0,
+          slowestRecoveryMs: slowestRecoveryMs !== null ? slowestRecoveryMs : 0,
+          averageRecoveryMs: avgRecoveryMs,
+          totalMeasuredRepairs: completedJobs.length,
+        },
+      },
+      networkPartitions: {
+        activeCount: activePartitions.length,
+        partitions: activePartitions.map((p) => ({
+          partitionId: p.partitionId,
+          groups: p.groups,
+          blockedPairsCount: p.blockedPairs?.length || 0,
+          createdAt: p.createdAt,
+        })),
       },
       recentActivity: recentActivities,
     };

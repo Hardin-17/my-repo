@@ -82,6 +82,16 @@ const vaultObjectSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
+    durabilityPolicy: {
+      type: String,
+      enum: ['ONE', 'QUORUM', 'ALL'],
+      default: 'QUORUM',
+    },
+    readPolicy: {
+      type: String,
+      enum: ['ANY_HEALTHY', 'LOWEST_LATENCY', 'QUORUM'],
+      default: 'ANY_HEALTHY',
+    },
     replicas: [replicaSchema],
     status: {
       type: String,

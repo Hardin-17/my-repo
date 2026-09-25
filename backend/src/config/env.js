@@ -15,6 +15,10 @@ const config = {
   integrityScanIntervalMs: parseInt(process.env.INTEGRITY_SCAN_INTERVAL_MS, 10) || 60000,
   integrityScanBatchSize: parseInt(process.env.INTEGRITY_SCAN_BATCH_SIZE, 10) || 10,
   maxConcurrentRepairs: parseInt(process.env.MAX_CONCURRENT_REPAIRS, 10) || 3,
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  rebalanceThresholdPercent: parseInt(process.env.REBALANCE_THRESHOLD_PERCENT, 10) || 20,
+  defaultDurabilityPolicy: process.env.DEFAULT_DURABILITY_POLICY || 'QUORUM',
+  defaultReadPolicy: process.env.DEFAULT_READ_POLICY || 'ANY_HEALTHY',
 };
 
 if (config.nodeEnv === 'production') {

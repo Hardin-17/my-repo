@@ -30,3 +30,6 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
+
+# Local Storage Node Data
+backend/storage/node-*/*

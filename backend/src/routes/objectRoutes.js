@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
-const { upload, listObjects, getObject, getReplicas, download } = require('../controllers/objectController');
+const { upload, update, listObjects, getObject, getReplicas, download } = require('../controllers/objectController');
 const { protect } = require('../middleware/authMiddleware');
 const config = require('../config/env');
 
@@ -18,6 +18,7 @@ const uploadMiddleware = multer({
 router.use(protect);
 
 router.post('/', uploadMiddleware.single('file'), upload);
+router.put('/:id', uploadMiddleware.single('file'), update);
 router.get('/', listObjects);
 router.get('/:id', getObject);
 router.get('/:id/replicas', getReplicas);

@@ -13,11 +13,13 @@ import {
   ShieldCheck,
   Server,
   Loader2,
+  Lock,
+  Cpu,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { api } from '@/lib/api';
 import { formatBytes } from '@/lib/utils';
-import { VaultObject } from '@/types';
+import { VaultObject, DurabilityPolicy, ReadPolicy } from '@/types';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -42,6 +44,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [replicationFactor, setReplicationFactor] = useState<number>(3);
+  const [durabilityPolicy, setDurabilityPolicy] = useState<DurabilityPolicy>('QUORUM');
+  const [readPolicy, setReadPolicy] = useState<ReadPolicy>('ANY_HEALTHY');
   const [currentStep, setCurrentStep] = useState<UploadStep>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -50,6 +54,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const resetState = () => {
     setSelectedFile(null);
     setReplicationFactor(3);
+    setDurabilityPolicy('QUORUM');
+    setReadPolicy('ANY_HEALTHY');
     setCurrentStep('idle');
     setErrorMessage(null);
   };
@@ -93,6 +99,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('replicationFactor', replicationFactor.toString());
+    formData.append('durabilityPolicy', durabilityPolicy);
+    formData.append('readPolicy', readPolicy);
 
     // Progress pipeline visualizer
     const stepTimer = (step: UploadStep, delayMs: number) =>
@@ -130,7 +138,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     { id: 'uploading', label: 'Streaming File' },
     { id: 'checksum', label: 'Computing SHA-256' },
     { id: 'selecting_nodes', label: 'Selecting Nodes' },
-    { id: 'creating_replicas', label: `${replicationFactor}x Replicas` },
+    { id: 'creating_replicas', label: `${replicationFactor}x Replicas (${durabilityPolicy})` },
     { id: 'verifying', label: 'Verifying Storage' },
   ];
 
@@ -142,10 +150,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90 sticky top-0 z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
               <UploadCloud className="w-4 h-4 text-indigo-300" />
@@ -175,7 +183,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-3 ${
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 ${
                   isDragging
                     ? 'border-indigo-500 bg-indigo-500/10'
                     : selectedFile
@@ -196,7 +204,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                       <File className="w-5 h-5" />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-semibold text-white truncate max-w-[280px]">
+                      <p className="text-sm font-semibold text-white truncate max-w-[320px]">
                         {selectedFile.name}
                       </p>
                       <p className="text-xs text-slate-400 font-mono">
@@ -206,8 +214,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                   </div>
                 ) : (
                   <>
-                    <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
-                      <UploadCloud className="w-6 h-6 text-indigo-400" />
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
+                      <UploadCloud className="w-5 h-5 text-indigo-400" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-200">
@@ -215,7 +223,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                         <span className="text-indigo-400 hover:underline">browse files</span>
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        Max upload size: 500 MB · SHA-256 calculated on ingest
+                        Max upload size: 500 MB · Cryptographic SHA-256 computed on ingest
                       </p>
                     </div>
                   </>
@@ -223,7 +231,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               </div>
 
               {/* Replication Factor Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                     <Layers className="w-3.5 h-3.5 text-indigo-400" />
@@ -250,9 +258,78 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Default: 3x. Each replica will be placed across distinct healthy storage nodes.
-                </p>
+              </div>
+
+              {/* Durability Policy Selection */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    Write Durability Policy (Acks)
+                  </label>
+                  <span className="text-xs font-mono text-amber-300">
+                    {durabilityPolicy === 'QUORUM'
+                      ? `${Math.floor(replicationFactor / 2) + 1} of ${replicationFactor} acks`
+                      : durabilityPolicy === 'ALL'
+                      ? `${replicationFactor} of ${replicationFactor} acks`
+                      : '1 ack'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'ONE', label: 'ONE', desc: 'Fastest (1 ack)' },
+                    { id: 'QUORUM', label: 'QUORUM (Recommended)', desc: 'Majority consensus' },
+                    { id: 'ALL', label: 'ALL', desc: 'Strict (100% acks)' },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setDurabilityPolicy(p.id as DurabilityPolicy)}
+                      className={`p-2.5 rounded-lg border text-left transition-all ${
+                        durabilityPolicy === p.id
+                          ? 'bg-amber-500/10 border-amber-500/60 text-amber-300 shadow-sm'
+                          : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="font-mono text-xs font-bold">{p.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{p.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Read Policy Selection */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                    <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                    Read / Retrieval Policy
+                  </label>
+                  <span className="text-xs font-mono text-cyan-300">{readPolicy}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'ANY_HEALTHY', label: 'ANY HEALTHY', desc: 'First online replica' },
+                    { id: 'LOWEST_LATENCY', label: 'LOWEST LATENCY', desc: 'Fastest response' },
+                    { id: 'QUORUM', label: 'QUORUM', desc: 'Consensus verified' },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setReadPolicy(p.id as ReadPolicy)}
+                      className={`p-2.5 rounded-lg border text-left transition-all ${
+                        readPolicy === p.id
+                          ? 'bg-cyan-500/10 border-cyan-500/60 text-cyan-300 shadow-sm'
+                          : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="font-mono text-xs font-bold">{p.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{p.desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Footer Actions */}
@@ -290,7 +367,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               </div>
               <h4 className="text-base font-bold text-white">Object Stored & Replicated</h4>
               <p className="text-xs text-slate-400">
-                Metadata persisted and {replicationFactor} replicas confirmed healthy.
+                Metadata persisted with {durabilityPolicy} durability and {replicationFactor} replicas confirmed.
               </p>
             </div>
           ) : (

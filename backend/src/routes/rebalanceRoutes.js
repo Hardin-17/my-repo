@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { verifyObject, scanAll } = require('../controllers/integrityController');
+const { triggerRebalance, getStatus } = require('../controllers/rebalanceController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
 
-router.post('/verify/:objectId', verifyObject);
-router.post('/scan-all', scanAll);
+router.post('/trigger', triggerRebalance);
+router.get('/status', getStatus);
 
 module.exports = router;

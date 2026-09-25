@@ -182,6 +182,22 @@ class IntegrityService {
       }
     }, config.integrityScanIntervalMs);
   }
+
+  /**
+   * Run integrity scrub across all stored objects
+   */
+  async scanAll(userId = null) {
+    const objects = await VaultObject.find();
+    const results = [];
+    for (const obj of objects) {
+      const res = await this.verifyObject(obj.objectId, userId);
+      results.push(res);
+    }
+    return {
+      scannedCount: objects.length,
+      results,
+    };
+  }
 }
 
 module.exports = new IntegrityService();

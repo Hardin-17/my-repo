@@ -13,7 +13,10 @@ connectDB().then(async () => {
   const repairService = require('./services/repairService');
   const integrityService = require('./services/integrityService');
 
+  const networkService = require('./services/networkService');
+
   await initializeDefaultNodes();
+  await networkService.ensureInitialized();
   startHeartbeatSimulation();
   startFailureDetector();
   repairService.startWorker();

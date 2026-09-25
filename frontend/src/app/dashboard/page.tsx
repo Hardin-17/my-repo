@@ -163,25 +163,43 @@ export default function DashboardPage() {
           <RecentActivityCard activities={metrics?.recentActivity ?? []} />
         </div>
 
-        {/* Storage Overhead & Self-Healing Telemetry Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/40 border border-slate-800/80 rounded-xl p-4 font-mono text-xs">
-          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-            <span className="text-slate-400">Replication Overhead</span>
-            <span className="text-indigo-300 font-bold">
-              {metrics?.storage?.overhead?.overheadPercentage || '200.0%'}
-            </span>
+        {/* Phase 4 Distributed Systems Telemetry Strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-900/40 border border-slate-800/80 rounded-xl p-4 font-mono text-xs">
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+            <div>
+              <span className="text-slate-400 block text-[10px]">STORAGE OVERHEAD</span>
+              <span className="text-indigo-300 font-bold">
+                {metrics?.storage?.overhead?.overheadRatio || '3.00x'} ({metrics?.storage?.overhead?.overheadPercentage || '200.0%'})
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-            <span className="text-slate-400">Active Self-Healing</span>
-            <span className={metrics?.recovery?.activeRepairs ? 'text-cyan-400 font-bold animate-pulse' : 'text-slate-300'}>
-              {metrics?.recovery?.activeRepairs || 0} active jobs
-            </span>
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+            <div>
+              <span className="text-slate-400 block text-[10px]">AVG RECOVERY TIME</span>
+              <span className="text-cyan-400 font-bold">
+                {metrics?.recovery?.timing?.averageRecoveryMs
+                  ? `${metrics.recovery.timing.averageRecoveryMs} ms`
+                  : 'Sub-second (<1s)'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-            <span className="text-slate-400">Completed Repairs</span>
-            <span className="text-emerald-400 font-bold">
-              {metrics?.recovery?.completedRepairs || 0} healed
-            </span>
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+            <div>
+              <span className="text-slate-400 block text-[10px]">NETWORK PARTITIONS</span>
+              <span className={metrics?.networkPartitions?.activeCount ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400 font-bold'}>
+                {metrics?.networkPartitions?.activeCount
+                  ? `${metrics.networkPartitions.activeCount} active split(s)`
+                  : '0 (Full Mesh)'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+            <div>
+              <span className="text-slate-400 block text-[10px]">WRITE POLICIES</span>
+              <span className="text-amber-300 font-bold">
+                Q:{metrics?.objects?.durabilityDistribution?.QUORUM || 0} · A:{metrics?.objects?.durabilityDistribution?.ALL || 0} · 1:{metrics?.objects?.durabilityDistribution?.ONE || 0}
+              </span>
+            </div>
           </div>
         </div>
 

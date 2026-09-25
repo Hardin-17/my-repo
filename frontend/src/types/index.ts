@@ -20,6 +20,8 @@ export type NodeStatus = 'ONLINE' | 'DEGRADED' | 'OFFLINE' | 'REPAIRING';
 export type ObjectStatus = 'HEALTHY' | 'DEGRADED' | 'CORRUPTED' | 'REPAIRING';
 export type ReplicaStatus = 'HEALTHY' | 'MISSING' | 'CORRUPTED' | 'INCONSISTENT' | 'REPAIRING';
 export type RepairJobStatus = 'QUEUED' | 'RUNNING' | 'VERIFYING' | 'COMPLETED' | 'FAILED';
+export type DurabilityPolicy = 'ONE' | 'QUORUM' | 'ALL';
+export type ReadPolicy = 'ANY_HEALTHY' | 'LOWEST_LATENCY' | 'QUORUM';
 
 export interface StorageNode {
   _id?: string;
@@ -53,6 +55,7 @@ export interface Replica {
   nodeStatus?: NodeStatus;
   nodeLatency?: number;
   zone?: string;
+  reachable?: boolean;
 }
 
 export interface VaultObject {
@@ -66,6 +69,8 @@ export interface VaultObject {
   checksum: string;
   version: number;
   replicationFactor: number;
+  durabilityPolicy?: DurabilityPolicy;
+  readPolicy?: ReadPolicy;
   replicas: Replica[];
   status: ObjectStatus;
   createdAt: string;
@@ -78,7 +83,7 @@ export interface RepairJob {
   objectId: string;
   sourceNodeId?: string | null;
   targetNodeId?: string | null;
-  reason: 'NODE_FAILURE' | 'CORRUPTION' | 'INCONSISTENCY' | 'MANUAL_REPAIR';
+  reason: 'NODE_FAILURE' | 'CORRUPTION' | 'INCONSISTENCY' | 'MANUAL_REPAIR' | 'RECONCILIATION_REPAIR';
   status: RepairJobStatus;
   progress: number;
   bytesTransferred: number;
@@ -104,6 +109,38 @@ export interface RecoveryMetrics {
   replicasRestored: number;
 }
 
+export interface NetworkPartition {
+  _id?: string;
+  partitionId: string;
+  groups: string[][];
+  blockedPairs: { from: string; to: string }[];
+  status: 'ACTIVE' | 'RESOLVED';
+  reason: string;
+  createdAt: string;
+  resolvedAt?: string | null;
+}
+
+export interface ActionProposal {
+  type: 'ACTION_PROPOSAL';
+  action:
+    | 'TRIGGER_REBALANCE'
+    | 'RECOVER_NODE'
+    | 'TRIGGER_INTEGRITY_SCAN'
+    | 'RECOVER_PARTITION'
+    | 'RUN_RECONCILIATION';
+  payload: Record<string, any>;
+  description: string;
+}
+
+export interface AIChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  proposals?: ActionProposal[];
+  timestamp: string;
+  modelUsed?: string;
+}
+
 export interface ActivityEvent {
   _id?: string;
   eventType:
@@ -125,7 +162,15 @@ export interface ActivityEvent {
     | 'REPAIR_FAILED'
     | 'REPLICA_VERIFIED'
     | 'REPLICA_INCONSISTENT'
-    | 'CORRUPTION_INJECTED';
+    | 'CORRUPTION_INJECTED'
+    | 'CHAOS_INJECTED'
+    | 'CHAOS_RESOLVED'
+    | 'OBJECT_UPDATED'
+    | 'REBALANCE_COMPLETED'
+    | 'SYSTEM_MAINTENANCE'
+    | 'AI_QUERY'
+    | 'NETWORK_PARTITION_CREATED'
+    | 'NETWORK_PARTITION_RESOLVED';
   message: string;
   userId?: { name: string; email: string; role: string } | string;
   objectId?: string;
@@ -154,6 +199,7 @@ export interface ClusterMetricsPayload {
       logicalBytes: number;
       physicalBytes: number;
       overheadPercentage: string;
+      overheadRatio?: string;
     };
   };
   objects: {
@@ -163,10 +209,30 @@ export interface ClusterMetricsPayload {
     corrupted: number;
     totalReplicas: number;
     corruptedReplicas?: number;
+    durabilityDistribution?: {
+      ONE: number;
+      QUORUM: number;
+      ALL: number;
+    };
   };
   recovery?: {
     activeRepairs: number;
     completedRepairs: number;
+    timing?: {
+      fastestRecoveryMs: number;
+      slowestRecoveryMs: number;
+      averageRecoveryMs: number;
+      totalMeasuredRepairs: number;
+    };
+  };
+  networkPartitions?: {
+    activeCount: number;
+    partitions: {
+      partitionId: string;
+      groups: string[][];
+      blockedPairsCount: number;
+      createdAt: string;
+    }[];
   };
   recentActivity: ActivityEvent[];
 }

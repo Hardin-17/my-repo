@@ -26,6 +26,19 @@ const verifyObject = async (req, res, next) => {
   }
 };
 
+const scanAll = async (req, res, next) => {
+  try {
+    const result = await integrityService.scanAll(req.user._id);
+    return successResponse(res, result, 'Full cluster cryptographic integrity scrub complete');
+  } catch (error) {
+    if (error.statusCode) {
+      return errorResponse(res, error.message, error.statusCode);
+    }
+    next(error);
+  }
+};
+
 module.exports = {
   verifyObject,
+  scanAll,
 };

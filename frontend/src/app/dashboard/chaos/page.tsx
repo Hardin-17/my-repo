@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { Button } from '@/components/ui/Button';
-import { StorageNode, VaultObject, RepairJob, RecoveryMetrics, ActivityEvent } from '@/types';
+import { StorageNode, VaultObject, RepairJob, RecoveryMetrics, ActivityEvent, NetworkPartition } from '@/types';
 import { api } from '@/lib/api';
 import { formatBytes, formatRelativeTime, truncateHash } from '@/lib/utils';
 import {
@@ -24,6 +24,8 @@ import {
   Radio,
   Network,
   RefreshCw,
+  Unplug,
+  Split,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,11 +35,16 @@ export default function ChaosLabPage() {
   const [repairJobs, setRepairJobs] = useState<RepairJob[]>([]);
   const [metrics, setMetrics] = useState<RecoveryMetrics | null>(null);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [activePartitions, setActivePartitions] = useState<NetworkPartition[]>([]);
 
   // Selection states
   const [selectedNodeId, setSelectedNodeId] = useState<string>('node-03');
   const [selectedObjectId, setSelectedObjectId] = useState<string>('');
   const [selectedReplicaNodeId, setSelectedReplicaNodeId] = useState<string>('');
+
+  // Network partition group states
+  const [partitionGroupA, setPartitionGroupA] = useState<string[]>(['node-01', 'node-02']);
+  const [partitionGroupB, setPartitionGroupB] = useState<string[]>(['node-03', 'node-04', 'node-05']);
 
   // Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -45,7 +52,7 @@ export default function ChaosLabPage() {
     title: string;
     description: string;
     actionLabel: string;
-    actionType: 'kill-node' | 'corrupt-replica';
+    actionType: 'kill-node' | 'corrupt-replica' | 'partition-network';
     isDestructive: boolean;
   }>({
     isOpen: false,
@@ -70,12 +77,13 @@ export default function ChaosLabPage() {
 
   const fetchLabData = async () => {
     try {
-      const [nodesRes, objectsRes, jobsRes, metricsRes, metricsAllRes] = await Promise.allSettled([
+      const [nodesRes, objectsRes, jobsRes, metricsRes, metricsAllRes, partitionsRes] = await Promise.allSettled([
         api.get<{ data: StorageNode[] }>('/nodes'),
         api.get<{ data: VaultObject[] }>('/objects'),
         api.get<{ data: RepairJob[] }>('/recovery/jobs'),
         api.get<{ data: RecoveryMetrics }>('/recovery/metrics'),
         api.get<{ data: { recentActivity: ActivityEvent[] } }>('/metrics'),
+        api.get<{ data: { active: NetworkPartition[]; all: NetworkPartition[] } }>('/chaos/network-partitions'),
       ]);
 
       if (nodesRes.status === 'fulfilled' && nodesRes.value?.data) {
@@ -106,6 +114,10 @@ export default function ChaosLabPage() {
       if (metricsAllRes.status === 'fulfilled' && metricsAllRes.value?.data?.recentActivity) {
         setActivities(metricsAllRes.value.data.recentActivity);
       }
+
+      if (partitionsRes.status === 'fulfilled' && partitionsRes.value?.data?.active) {
+        setActivePartitions(partitionsRes.value.data.active);
+      }
     } catch (err) {
       console.error('Failed to poll Chaos Lab telemetries:', err);
     }
@@ -125,6 +137,18 @@ export default function ChaosLabPage() {
     }
   }, [selectedObjectId, objects]);
 
+  const toggleNodeGroup = (nodeId: string) => {
+    if (partitionGroupA.includes(nodeId)) {
+      if (partitionGroupA.length === 1) return; // Keep at least 1 in group A
+      setPartitionGroupA(partitionGroupA.filter((id) => id !== nodeId));
+      setPartitionGroupB([...partitionGroupB, nodeId]);
+    } else {
+      if (partitionGroupB.length === 1) return; // Keep at least 1 in group B
+      setPartitionGroupB(partitionGroupB.filter((id) => id !== nodeId));
+      setPartitionGroupA([...partitionGroupA, nodeId]);
+    }
+  };
+
   const handleOpenKillConfirm = () => {
     setConfirmModal({
       isOpen: true,
@@ -143,6 +167,17 @@ export default function ChaosLabPage() {
       description: `Are you sure you want to flip binary bits on replica ${selectedReplicaNodeId}? This simulates real disk bit-rot to test SHA-256 integrity detection.`,
       actionLabel: 'Inject Corruption',
       actionType: 'corrupt-replica',
+      isDestructive: true,
+    });
+  };
+
+  const handleOpenPartitionConfirm = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: `Inject Network Partition`,
+      description: `Sever network connectivity between Group A [${partitionGroupA.join(', ')}] and Group B [${partitionGroupB.join(', ')}]. Storage nodes will remain online, but inter-node replication and quorum writes spanning both groups will fail.`,
+      actionLabel: 'Sever Network Links',
+      actionType: 'partition-network',
       isDestructive: true,
     });
   };
@@ -177,9 +212,7 @@ export default function ChaosLabPage() {
         });
 
         // Trigger integrity verification to detect and heal
-        const verifyRes = await api.post<{ data: { hasCorruptedReplica: boolean } }>(
-          `/integrity/verify/${selectedObjectId}`
-        );
+        await api.post(`/integrity/verify/${selectedObjectId}`);
 
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
         setLastScorecard({
@@ -190,6 +223,23 @@ export default function ChaosLabPage() {
           dataLost: '0 bytes',
           replicasRestored: '1 / 1',
           integrity: '100% Re-Verified',
+          recoveryTime: `${elapsed}s`,
+        });
+      } else if (confirmModal.actionType === 'partition-network') {
+        await api.post('/chaos/network-partition', {
+          groups: [partitionGroupA, partitionGroupB],
+          reason: 'Operator-triggered partial mesh partition',
+        });
+
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+        setLastScorecard({
+          failureType: 'Network Partition Injected',
+          target: `[${partitionGroupA.join(',')}] <-> [${partitionGroupB.join(',')}]`,
+          affectedObjects: objects.length,
+          objectsRepaired: 0,
+          dataLost: '0 bytes',
+          replicasRestored: 'Mesh Isolated',
+          integrity: 'Preserved (Nodes Online)',
           recoveryTime: `${elapsed}s`,
         });
       }
@@ -209,6 +259,18 @@ export default function ChaosLabPage() {
       await fetchLabData();
     } catch (err: any) {
       alert(err.message || 'Failed to recover node');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRecoverPartition = async (partitionId?: string) => {
+    setIsProcessing(true);
+    try {
+      await api.post('/chaos/network-partition/recover', { partitionId });
+      await fetchLabData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to recover partition');
     } finally {
       setIsProcessing(false);
     }
@@ -362,34 +424,131 @@ export default function ChaosLabPage() {
             </div>
           </div>
 
-          {/* Card 3: Network Partition (Phase 4 Preview) */}
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm space-y-4 flex flex-col justify-between opacity-80">
+          {/* Card 3: Network Partition Simulation (Phase 4 Real Implementation) */}
+          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-bold">
-                  <Network className="w-4 h-4 text-cyan-400" /> Network Partition
+                <span className="text-xs font-mono uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 font-bold">
+                  <Network className="w-4 h-4" /> Network Partition Lab
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                  COMING IN PHASE 4
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                  activePartitions.length > 0
+                    ? 'bg-rose-500/10 text-rose-300 border-rose-500/30 animate-pulse'
+                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                }`}>
+                  {activePartitions.length > 0 ? `${activePartitions.length} PARTITION ACTIVE` : 'MESH CONNECTED'}
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Split-brain simulation, zone isolation, and asymmetric packet-drop policies.
+                Partition nodes into isolated network groups. Nodes remain online, but inter-partition links are blocked.
               </p>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 text-center space-y-2 mt-4">
-                <Radio className="w-8 h-8 text-cyan-400/50 mx-auto animate-pulse" />
-                <p className="text-xs font-mono text-slate-300">
-                  Advanced Quorum & Network Partition Simulation scheduled for Phase 4.
-                </p>
+              {/* Group assignment selectors */}
+              <div className="space-y-2 pt-2">
+                <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between">
+                  <span>Assign Nodes to Groups (Click to switch):</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2 rounded-lg bg-slate-950 border border-cyan-500/30 space-y-1">
+                    <span className="text-[10px] text-cyan-400 font-bold block">GROUP A:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {partitionGroupA.map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleNodeGroup(id)}
+                          className="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 hover:bg-cyan-900 text-[11px]"
+                          title="Click to move to Group B"
+                        >
+                          {id}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-slate-950 border border-purple-500/30 space-y-1">
+                    <span className="text-[10px] text-purple-400 font-bold block">GROUP B:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {partitionGroupB.map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleNodeGroup(id)}
+                          className="px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-500/50 hover:bg-purple-900 text-[11px]"
+                          title="Click to move to Group A"
+                        >
+                          {id}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" disabled className="w-full text-xs">
-              Simulate Partition (Phase 4)
-            </Button>
+            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={isProcessing}
+                onClick={handleOpenPartitionConfirm}
+                className="w-full text-xs"
+              >
+                <Unplug className="w-3.5 h-3.5 mr-1" />
+                <span>Sever Mesh Link</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={activePartitions.length === 0 || isProcessing}
+                onClick={() => handleRecoverPartition()}
+                className="w-full text-xs hover:border-emerald-500 hover:text-emerald-300"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                <span>Heal All Links</span>
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Active Partitions Panel (if partitions exist) */}
+        {activePartitions.length > 0 && (
+          <div className="p-4 rounded-xl bg-slate-900 border border-rose-500/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <h4 className="text-xs font-bold font-mono text-rose-300 uppercase tracking-wide">
+                  Active Network Partitions in Cluster
+                </h4>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRecoverPartition()}
+                className="text-xs hover:border-emerald-500 hover:text-emerald-300"
+              >
+                <RotateCcw className="w-3 h-3 mr-1 text-emerald-400" />
+                Heal Network Partition
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1 font-mono text-xs">
+              {activePartitions.map((p) => (
+                <div key={p.partitionId} className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400">{p.partitionId}</span>
+                    <div className="text-rose-400 font-semibold">
+                      {p.groups.map((g) => `[${g.join(',')}]`).join(' ⚡ [BLOCKED] ⚡ ')}
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                    {p.blockedPairs.length / 2} Links Cut
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Live Recovery Scorecard */}
         {lastScorecard && (
@@ -527,6 +686,11 @@ export default function ChaosLabPage() {
                     'REPAIR_STARTED',
                     'REPAIR_COMPLETED',
                     'CORRUPTION_INJECTED',
+                    'CHAOS_INJECTED',
+                    'CHAOS_RESOLVED',
+                    'NETWORK_PARTITION_CREATED',
+                    'NETWORK_PARTITION_RESOLVED',
+                    'REBALANCE_COMPLETED',
                   ].includes(a.eventType)
                 )
                 .slice(0, 10)
