@@ -9,11 +9,12 @@ import {
   ShieldCheck,
   Server,
   Layers,
-  Clock,
-  HardDrive,
   Copy,
   Check,
   AlertTriangle,
+  RotateCw,
+  Wrench,
+  Loader2,
 } from 'lucide-react';
 import { StatusBadge } from '../dashboard/StatusBadge';
 import { Button } from '../ui/Button';
@@ -36,50 +37,106 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
 }) => {
   const [copiedChecksum, setCopiedChecksum] = useState(false);
   const [replicas, setReplicas] = useState<Replica[]>([]);
-  const [isLoadingReplicas, setIsLoadingReplicas] = useState(false);
-  const [verifyNotice, setVerifyNotice] = useState<string | null>(null);
+  const [currentObject, setCurrentObject] = useState<VaultObject | null>(object);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{
+    text: string;
+    type: 'success' | 'warning' | 'error';
+  } | null>(null);
 
   useEffect(() => {
     if (object && isOpen) {
+      setCurrentObject(object);
       setReplicas(object.replicas || []);
-      setVerifyNotice(null);
-
-      // Fetch enriched replica details
-      const fetchReplicas = async () => {
-        setIsLoadingReplicas(true);
-        try {
-          const res = await api.get<{ data: { replicas: Replica[] } }>(
-            `/objects/${object.objectId}/replicas`
-          );
-          if (res.data?.replicas) {
-            setReplicas(res.data.replicas);
-          }
-        } catch (err) {
-          console.warn('Failed to load enriched replicas:', err);
-        } finally {
-          setIsLoadingReplicas(false);
-        }
-      };
-
-      fetchReplicas();
+      setFeedbackMessage(null);
+      fetchLatestDetails();
     }
   }, [object, isOpen]);
 
+  const fetchLatestDetails = async () => {
+    if (!object) return;
+    try {
+      const res = await api.get<{ data: { replicas: Replica[] } }>(
+        `/objects/${object.objectId}/replicas`
+      );
+      if (res.data?.replicas) {
+        setReplicas(res.data.replicas);
+      }
+      const objRes = await api.get<{ data: VaultObject }>(`/objects/${object.objectId}`);
+      if (objRes.data) {
+        setCurrentObject(objRes.data);
+      }
+    } catch (err) {
+      console.warn('Failed to load replica details:', err);
+    }
+  };
+
   const handleCopyHash = () => {
-    if (object?.checksum) {
-      navigator.clipboard.writeText(object.checksum);
+    if (currentObject?.checksum) {
+      navigator.clipboard.writeText(currentObject.checksum);
       setCopiedChecksum(true);
       setTimeout(() => setCopiedChecksum(false), 2000);
     }
   };
 
-  const handleVerifyClick = () => {
-    setVerifyNotice(
-      'Integrity Scrubber preparation: In Phase 3, this triggers asynchronous SHA-256 block-level scrubbing and automated bit-rot repair across all storage nodes.'
-    );
+  const handleVerifyIntegrity = async () => {
+    if (!currentObject) return;
+    setIsVerifying(true);
+    setFeedbackMessage(null);
+    try {
+      const res = await api.post<{
+        data: {
+          hasCorruptedReplica: boolean;
+          repairJobCreated: boolean;
+          replicas: Replica[];
+        };
+      }>(`/integrity/verify/${currentObject.objectId}`);
+
+      if (res.data?.hasCorruptedReplica) {
+        setFeedbackMessage({
+          text: 'Integrity Scrub: Corrupted replica detected! Automatic repair job scheduled.',
+          type: 'warning',
+        });
+      } else {
+        setFeedbackMessage({
+          text: 'Integrity Scrub: 100% SHA-256 match across all active replicas.',
+          type: 'success',
+        });
+      }
+      await fetchLatestDetails();
+    } catch (err: any) {
+      setFeedbackMessage({
+        text: err.message || 'Verification failed',
+        type: 'error',
+      });
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  if (!isOpen || !object) return null;
+  const handleManualRepair = async () => {
+    if (!currentObject) return;
+    setIsRepairing(true);
+    setFeedbackMessage(null);
+    try {
+      const res = await api.post(`/repair/object/${currentObject.objectId}`);
+      setFeedbackMessage({
+        text: 'Self-healing repair job dispatched to background worker.',
+        type: 'success',
+      });
+      await fetchLatestDetails();
+    } catch (err: any) {
+      setFeedbackMessage({
+        text: err.message || 'Repair dispatch failed',
+        type: 'error',
+      });
+    } finally {
+      setIsRepairing(false);
+    }
+  };
+
+  if (!isOpen || !currentObject) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
@@ -98,11 +155,11 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white truncate max-w-md">
-                  {object.originalName}
+                  {currentObject.originalName}
                 </h3>
-                <StatusBadge status={object.status} size="sm" />
+                <StatusBadge status={currentObject.status} size="sm" />
               </div>
-              <p className="text-xs font-mono text-slate-400">Key: {object.storageKey}</p>
+              <p className="text-xs font-mono text-slate-400">Key: {currentObject.storageKey}</p>
             </div>
           </div>
           <button
@@ -114,25 +171,27 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-6 overflow-y-auto space-y-5">
           {/* Metadata Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-xs font-mono">
             <div>
               <span className="text-slate-400 block text-[10px] uppercase">Object Size</span>
-              <span className="text-slate-200 font-semibold">{formatBytes(object.size)}</span>
+              <span className="text-slate-200 font-semibold">{formatBytes(currentObject.size)}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase">Version</span>
-              <span className="text-slate-200 font-semibold">v{object.version}</span>
+              <span className="text-slate-200 font-semibold">v{currentObject.version}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase">Replication Factor</span>
-              <span className="text-indigo-400 font-semibold">{object.replicationFactor}x Replicas</span>
+              <span className="text-indigo-400 font-semibold">
+                {currentObject.replicationFactor}x Target
+              </span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase">Created</span>
               <span className="text-slate-300 font-semibold">
-                {formatRelativeTime(object.createdAt)}
+                {formatRelativeTime(currentObject.createdAt)}
               </span>
             </div>
           </div>
@@ -142,7 +201,7 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 font-mono flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Cryptographic SHA-256 Checksum
+                Expected SHA-256 Checksum
               </span>
               <button
                 onClick={handleCopyHash}
@@ -162,7 +221,7 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
               </button>
             </div>
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-emerald-300 break-all select-all">
-              {object.checksum}
+              {currentObject.checksum}
             </div>
           </div>
 
@@ -171,9 +230,16 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-indigo-400" />
-                Distributed Replicas ({replicas.length}/{object.replicationFactor})
+                Distributed Replicas ({replicas.filter((r) => r.status === 'HEALTHY').length} /{' '}
+                {currentObject.replicationFactor})
               </h4>
-              <span className="text-[11px] font-mono text-emerald-400">Quorum Intact</span>
+              <button
+                onClick={fetchLatestDetails}
+                className="text-[11px] font-mono text-slate-400 hover:text-white flex items-center gap-1"
+              >
+                <RotateCw className="w-3 h-3" />
+                <span>Refresh</span>
+              </button>
             </div>
 
             <div className="space-y-2">
@@ -200,7 +266,15 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
                   <div className="flex items-center gap-4 text-slate-400 text-[11px]">
                     <div>
                       <span className="text-slate-400 block text-[9px]">CHECKSUM</span>
-                      <span className="text-slate-300">{truncateHash(rep.checksum, 6, 6)}</span>
+                      <span
+                        className={
+                          rep.status === 'CORRUPTED'
+                            ? 'text-rose-400 font-semibold'
+                            : 'text-slate-300'
+                        }
+                      >
+                        {truncateHash(rep.checksum, 6, 6)}
+                      </span>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[9px]">VERSION</span>
@@ -216,33 +290,56 @@ export const ObjectDetailsModal: React.FC<ObjectDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Verify Notice if clicked */}
-          {verifyNotice && (
+          {/* Feedback banner */}
+          {feedbackMessage && (
             <motion.div
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs flex items-start gap-2"
+              className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+                feedbackMessage.type === 'success'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : feedbackMessage.type === 'warning'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              }`}
             >
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-indigo-400" />
-              <span>{verifyNotice}</span>
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{feedbackMessage.text}</span>
             </motion.div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={handleVerifyClick}>
-            <ShieldCheck className="w-4 h-4 mr-1 text-emerald-400" />
-            <span>Verify Integrity</span>
-          </Button>
+        <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/90 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              isLoading={isVerifying}
+              onClick={handleVerifyIntegrity}
+            >
+              <ShieldCheck className="w-4 h-4 mr-1 text-emerald-400" />
+              <span>Verify Integrity</span>
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              isLoading={isRepairing}
+              onClick={handleManualRepair}
+            >
+              <Wrench className="w-4 h-4 mr-1 text-cyan-400" />
+              <span>Repair Replicas</span>
+            </Button>
+          </div>
 
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={onClose}>
               Close
             </Button>
-            <Button variant="primary" size="sm" onClick={() => onDownload(object)}>
+            <Button variant="primary" size="sm" onClick={() => onDownload(currentObject)}>
               <Download className="w-4 h-4 mr-1.5" />
-              <span>Download Object</span>
+              <span>Download Stream</span>
             </Button>
           </div>
         </div>

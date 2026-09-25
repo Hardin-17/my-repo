@@ -9,9 +9,15 @@ const app = express();
 
 // Initialize MongoDB connection and cluster services
 connectDB().then(async () => {
-  const { initializeDefaultNodes, startHeartbeatSimulation } = require('./services/nodeService');
+  const { initializeDefaultNodes, startHeartbeatSimulation, startFailureDetector } = require('./services/nodeService');
+  const repairService = require('./services/repairService');
+  const integrityService = require('./services/integrityService');
+
   await initializeDefaultNodes();
   startHeartbeatSimulation();
+  startFailureDetector();
+  repairService.startWorker();
+  integrityService.startBackgroundScanner();
 });
 
 // Core Middleware

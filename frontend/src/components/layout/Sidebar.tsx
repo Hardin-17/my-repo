@@ -26,9 +26,9 @@ const navItems = [
   { name: 'Cluster Overview', href: '/dashboard', icon: Activity },
   { name: 'Storage Nodes', href: '/dashboard/nodes', icon: Server },
   { name: 'Object Explorer', href: '/dashboard/objects', icon: HardDrive },
-  { name: 'Replication Policy', href: '#replication', icon: Layers, badge: 'Phase 3' },
-  { name: 'Integrity & Bit-Rot', href: '#integrity', icon: ShieldCheck, badge: 'Phase 3' },
-  { name: 'Chaos Simulation', href: '#chaos', icon: Zap, badge: 'Phase 4' },
+  { name: 'Chaos Lab', href: '/dashboard/chaos', icon: Zap },
+  { name: 'Replication Policy', href: '#replication', icon: Layers, badge: 'Phase 4' },
+  { name: 'Network Partition', href: '#partition', icon: ShieldCheck, badge: 'Phase 4' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {

@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   RefreshCw,
+  Flame,
 } from 'lucide-react';
 
 interface BackendHealth {
@@ -162,13 +163,35 @@ export default function DashboardPage() {
           <RecentActivityCard activities={metrics?.recentActivity ?? []} />
         </div>
 
+        {/* Storage Overhead & Self-Healing Telemetry Strip */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/40 border border-slate-800/80 rounded-xl p-4 font-mono text-xs">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
+            <span className="text-slate-400">Replication Overhead</span>
+            <span className="text-indigo-300 font-bold">
+              {metrics?.storage?.overhead?.overheadPercentage || '200.0%'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
+            <span className="text-slate-400">Active Self-Healing</span>
+            <span className={metrics?.recovery?.activeRepairs ? 'text-cyan-400 font-bold animate-pulse' : 'text-slate-300'}>
+              {metrics?.recovery?.activeRepairs || 0} active jobs
+            </span>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
+            <span className="text-slate-400">Completed Repairs</span>
+            <span className="text-emerald-400 font-bold">
+              {metrics?.recovery?.completedRepairs || 0} healed
+            </span>
+          </div>
+        </div>
+
         {/* Live Interactive React Flow Topology Mesh */}
         <div className="mt-6">
           <InteractiveClusterTopology nodes={nodes} onRefresh={fetchClusterData} />
         </div>
 
         {/* Quick Links Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
           <Link
             href="/dashboard/objects"
             className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition group flex items-center justify-between"
@@ -182,7 +205,7 @@ export default function DashboardPage() {
                   Object Explorer
                 </h4>
                 <p className="text-xs text-slate-400">
-                  Inspect {metrics?.objects?.total || 0} distributed objects & download replicas
+                  Inspect {metrics?.objects?.total || 0} objects
                 </p>
               </div>
             </div>
@@ -199,14 +222,34 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-white group-hover:text-emerald-300 transition">
-                  Storage Node Fleet
+                  Storage Fleet
                 </h4>
                 <p className="text-xs text-slate-400">
-                  Manage {metrics?.nodes?.total || 5} nodes, ping heartbeats, and check storage capacity
+                  {metrics?.nodes?.healthy || 5} nodes online
                 </p>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition" />
+          </Link>
+
+          <Link
+            href="/dashboard/chaos"
+            className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-rose-500/50 transition group flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-rose-600/20 text-rose-400 border border-rose-500/30 flex items-center justify-center group-hover:scale-105 transition">
+                <Flame className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-white group-hover:text-rose-300 transition">
+                  VAULT Chaos Lab
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Inject faults & watch auto-repair
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-rose-400 group-hover:translate-x-1 transition" />
           </Link>
         </div>
 

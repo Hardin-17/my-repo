@@ -227,6 +227,42 @@ const startHeartbeatSimulation = () => {
   }, 8000);
 };
 
+/**
+ * Background Failure Detector
+ * Checks for nodes whose lastHeartbeat is older than config.nodeHeartbeatTimeoutMs
+ */
+let failureDetectorInterval = null;
+
+const startFailureDetector = () => {
+  if (failureDetectorInterval) return;
+
+  const chaosService = require('./chaosService');
+
+  failureDetectorInterval = setInterval(async () => {
+    try {
+      const dbStatus = getDbStatus();
+      if (dbStatus.readyState !== 1) return;
+
+      const timeoutThreshold = new Date(Date.now() - config.nodeHeartbeatTimeoutMs);
+      const staleNodes = await Node.find({
+        status: { $in: ['ONLINE', 'DEGRADED'] },
+        lastHeartbeat: { $lt: timeoutThreshold },
+      });
+
+      for (const node of staleNodes) {
+        console.warn(`[FailureDetector] Node ${node.nodeId} heartbeat timed out. Marking OFFLINE...`);
+        await chaosService.injectNodeFailure(
+          node.nodeId,
+          null,
+          `Heartbeat timeout exceeded (${config.nodeHeartbeatTimeoutMs}ms)`
+        );
+      }
+    } catch (err) {
+      // Silent loop catch
+    }
+  }, 5000);
+};
+
 module.exports = {
   initializeDefaultNodes,
   getAllNodes,
@@ -236,4 +272,5 @@ module.exports = {
   selectNodesForPlacement,
   updateNodeMetrics,
   startHeartbeatSimulation,
+  startFailureDetector,
 };

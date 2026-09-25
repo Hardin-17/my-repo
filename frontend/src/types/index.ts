@@ -18,6 +18,8 @@ export interface AuthResponse {
 
 export type NodeStatus = 'ONLINE' | 'DEGRADED' | 'OFFLINE' | 'REPAIRING';
 export type ObjectStatus = 'HEALTHY' | 'DEGRADED' | 'CORRUPTED' | 'REPAIRING';
+export type ReplicaStatus = 'HEALTHY' | 'MISSING' | 'CORRUPTED' | 'INCONSISTENT' | 'REPAIRING';
+export type RepairJobStatus = 'QUEUED' | 'RUNNING' | 'VERIFYING' | 'COMPLETED' | 'FAILED';
 
 export interface StorageNode {
   _id?: string;
@@ -33,6 +35,9 @@ export interface StorageNode {
   zone: string;
   address: string;
   lastHeartbeat: string;
+  failedAt?: string | null;
+  failureReason?: string | null;
+  failureCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -42,7 +47,7 @@ export interface Replica {
   version: number;
   checksum: string;
   size: number;
-  status: 'HEALTHY' | 'CORRUPTED' | 'DEGRADED' | 'REPAIRING';
+  status: ReplicaStatus;
   createdAt: string;
   nodeName?: string;
   nodeStatus?: NodeStatus;
@@ -67,6 +72,38 @@ export interface VaultObject {
   updatedAt: string;
 }
 
+export interface RepairJob {
+  _id?: string;
+  jobId: string;
+  objectId: string;
+  sourceNodeId?: string | null;
+  targetNodeId?: string | null;
+  reason: 'NODE_FAILURE' | 'CORRUPTION' | 'INCONSISTENCY' | 'MANUAL_REPAIR';
+  status: RepairJobStatus;
+  progress: number;
+  bytesTransferred: number;
+  totalBytes: number;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  error?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecoveryMetrics {
+  repairJobsCreated: number;
+  repairJobsCompleted: number;
+  repairJobsFailed: number;
+  activeRepairs: number;
+  totalBytesRepaired: number;
+  averageRepairTimeSeconds: number;
+  lastRepairTime?: string | null;
+  objectsCurrentlyDegraded: number;
+  objectsCurrentlyHealthy: number;
+  objectsCurrentlyCorrupted: number;
+  replicasRestored: number;
+}
+
 export interface ActivityEvent {
   _id?: string;
   eventType:
@@ -75,7 +112,20 @@ export interface ActivityEvent {
     | 'REPLICA_CREATED'
     | 'NODE_REGISTERED'
     | 'NODE_HEARTBEAT'
-    | 'OBJECT_VERIFIED';
+    | 'OBJECT_VERIFIED'
+    | 'NODE_FAILURE_DETECTED'
+    | 'NODE_RECOVERED'
+    | 'REPLICA_MARKED_MISSING'
+    | 'REPLICA_MARKED_CORRUPTED'
+    | 'INTEGRITY_CHECK_STARTED'
+    | 'INTEGRITY_CHECK_COMPLETED'
+    | 'REPAIR_JOB_CREATED'
+    | 'REPAIR_STARTED'
+    | 'REPAIR_COMPLETED'
+    | 'REPAIR_FAILED'
+    | 'REPLICA_VERIFIED'
+    | 'REPLICA_INCONSISTENT'
+    | 'CORRUPTION_INJECTED';
   message: string;
   userId?: { name: string; email: string; role: string } | string;
   objectId?: string;
@@ -87,6 +137,7 @@ export interface ActivityEvent {
 export interface ClusterMetricsPayload {
   clusterHealth: 'Healthy' | 'Warning' | 'Repairing';
   sla: string;
+  replicationHealth: string;
   nodes: {
     total: number;
     healthy: number;
@@ -99,6 +150,11 @@ export interface ClusterMetricsPayload {
     usedBytes: number;
     availableBytes: number;
     utilizationPercentage: string | number;
+    overhead?: {
+      logicalBytes: number;
+      physicalBytes: number;
+      overheadPercentage: string;
+    };
   };
   objects: {
     total: number;
@@ -106,6 +162,11 @@ export interface ClusterMetricsPayload {
     degraded: number;
     corrupted: number;
     totalReplicas: number;
+    corruptedReplicas?: number;
+  };
+  recovery?: {
+    activeRepairs: number;
+    completedRepairs: number;
   };
   recentActivity: ActivityEvent[];
 }

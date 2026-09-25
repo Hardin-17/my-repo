@@ -11,6 +11,10 @@ const config = {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   maxUploadSizeMb: parseInt(process.env.MAX_UPLOAD_SIZE_MB, 10) || 500,
   storagePath: process.env.STORAGE_PATH || require('path').resolve(__dirname, '../../storage'),
+  nodeHeartbeatTimeoutMs: parseInt(process.env.NODE_HEARTBEAT_TIMEOUT_MS, 10) || 15000,
+  integrityScanIntervalMs: parseInt(process.env.INTEGRITY_SCAN_INTERVAL_MS, 10) || 60000,
+  integrityScanBatchSize: parseInt(process.env.INTEGRITY_SCAN_BATCH_SIZE, 10) || 10,
+  maxConcurrentRepairs: parseInt(process.env.MAX_CONCURRENT_REPAIRS, 10) || 3,
 };
 
 if (config.nodeEnv === 'production') {

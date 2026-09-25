@@ -62,6 +62,18 @@ const nodeSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    failedAt: {
+      type: Date,
+      default: null,
+    },
+    failureReason: {
+      type: String,
+      default: null,
+    },
+    failureCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

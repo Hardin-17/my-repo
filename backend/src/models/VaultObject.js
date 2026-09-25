@@ -21,7 +21,7 @@ const replicaSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['HEALTHY', 'CORRUPTED', 'DEGRADED', 'REPAIRING'],
+      enum: ['HEALTHY', 'MISSING', 'CORRUPTED', 'INCONSISTENT', 'REPAIRING'],
       default: 'HEALTHY',
     },
     createdAt: {
@@ -98,10 +98,12 @@ const vaultObjectSchema = new mongoose.Schema(
 // Method to determine overall object health from replicas
 vaultObjectSchema.methods.recalculateStatus = function () {
   const healthyReplicas = this.replicas.filter((r) => r.status === 'HEALTHY').length;
+  const isRepairing = this.replicas.some((r) => r.status === 'REPAIRING');
+
   if (healthyReplicas === 0) {
     this.status = 'CORRUPTED';
   } else if (healthyReplicas < this.replicationFactor) {
-    this.status = 'DEGRADED';
+    this.status = isRepairing ? 'REPAIRING' : 'DEGRADED';
   } else {
     this.status = 'HEALTHY';
   }

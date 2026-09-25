@@ -118,6 +118,85 @@ class StorageNodeService {
       };
     }
   }
+
+  /**
+   * Controlled byte-level data corruption injection for testing bit-rot detection & self-healing
+   */
+  async corruptReplica(nodeId, storageKey) {
+    const targetPath = this.resolveReplicaPath(nodeId, storageKey);
+    if (!fs.existsSync(targetPath)) {
+      throw new Error(`Cannot corrupt: Replica not found on node ${nodeId} for key ${storageKey}`);
+    }
+
+    const buffer = await fs.promises.readFile(targetPath);
+    if (buffer.length > 0) {
+      // Invert bits in first byte or append bit-rot sequence
+      buffer[0] = buffer[0] ^ 0xff;
+    }
+    const corruptedBuffer = Buffer.concat([buffer, Buffer.from('_CORRUPTED_BIT_ROT_')]);
+    await fs.promises.writeFile(targetPath, corruptedBuffer);
+
+    const newChecksum = crypto.createHash('sha256').update(corruptedBuffer).digest('hex');
+    return {
+      nodeId,
+      storageKey,
+      newSize: corruptedBuffer.length,
+      newChecksum,
+    };
+  }
+
+  /**
+   * Actual replica copying across logical node directories with streaming
+   */
+  async copyReplica(sourceNodeId, targetNodeId, storageKey) {
+    const sourcePath = this.resolveReplicaPath(sourceNodeId, storageKey);
+    const targetPath = this.resolveReplicaPath(targetNodeId, storageKey);
+
+    if (!fs.existsSync(sourcePath)) {
+      throw new Error(`Source replica not found on node ${sourceNodeId} for key ${storageKey}`);
+    }
+
+    const targetDir = path.dirname(targetPath);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // Copy stream and calculate SHA-256 incrementally
+    return new Promise((resolve, reject) => {
+      const readStream = fs.createReadStream(sourcePath);
+      const writeStream = fs.createWriteStream(targetPath);
+      const hash = crypto.createHash('sha256');
+      let bytesTransferred = 0;
+
+      readStream.on('data', (chunk) => {
+        hash.update(chunk);
+        bytesTransferred += chunk.length;
+      });
+
+      readStream.on('error', (err) => {
+        writeStream.destroy();
+        reject(err);
+      });
+
+      writeStream.on('error', (err) => {
+        readStream.destroy();
+        reject(err);
+      });
+
+      writeStream.on('finish', () => {
+        const computedChecksum = hash.digest('hex');
+        resolve({
+          sourceNodeId,
+          targetNodeId,
+          storageKey,
+          bytesTransferred,
+          checksum: computedChecksum,
+        });
+      });
+
+      readStream.pipe(writeStream);
+    });
+  }
 }
 
 // Export singleton instance
