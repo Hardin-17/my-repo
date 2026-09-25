@@ -7,13 +7,14 @@ let memoryServer = null;
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(config.mongoUri, {
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 5000,
     });
     isConnected = true;
     console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
-    console.warn(`[Database] MongoDB connection to ${config.mongoUri} unavailable: ${error.message}`);
+    const sanitizedUri = config.mongoUri ? config.mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@') : '';
+    console.warn(`[Database] MongoDB connection to ${sanitizedUri} unavailable: ${error.message}`);
     
     // In development/test mode, fall back to embedded in-memory MongoDB
     if (config.nodeEnv !== 'production') {
