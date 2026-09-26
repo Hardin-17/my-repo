@@ -86,6 +86,10 @@ nodeSchema.pre('save', function (next) {
   next();
 });
 
+// Optimized compound indexes for node selection and heartbeat monitoring
+nodeSchema.index({ status: 1, availableStorage: -1 });
+nodeSchema.index({ lastHeartbeat: -1 });
+
 const Node = mongoose.model('Node', nodeSchema);
 
 module.exports = Node;

@@ -76,6 +76,11 @@ const activitySchema = new mongoose.Schema(
   }
 );
 
+// Optimized compound indexes for activity timeline and filtering
+activitySchema.index({ timestamp: -1 });
+activitySchema.index({ userId: 1, timestamp: -1 });
+activitySchema.index({ eventType: 1, timestamp: -1 });
+
 const Activity = mongoose.model('Activity', activitySchema);
 
 module.exports = Activity;

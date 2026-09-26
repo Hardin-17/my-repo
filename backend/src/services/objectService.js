@@ -87,45 +87,30 @@ const uploadObject = async ({
   const selectedNodes = await nodeService.selectNodesForPlacement(parsedRf, file.buffer.length);
   const primaryNode = selectedNodes[0];
 
-  const replicas = [];
-  const writtenNodes = [];
-  let successfulAcks = 0;
-
-  // Attempt write to each selected node respecting network connectivity
-  for (const node of selectedNodes) {
+  // Attempt concurrent write to all selected nodes respecting network connectivity
+  const writePromises = selectedNodes.map(async (node) => {
     // Check network partition connectivity between primary gateway and target node
     const isReachable =
       node.nodeId === primaryNode.nodeId ||
       networkService.canCommunicate(primaryNode.nodeId, node.nodeId);
 
     if (!isReachable || node.status !== 'ONLINE') {
-      // Node is unreachable due to partition or offline
-      replicas.push({
+      return {
+        replica: {
+          nodeId: node.nodeId,
+          version: 1,
+          checksum,
+          size: file.buffer.length,
+          status: 'MISSING',
+          createdAt: new Date(),
+        },
         nodeId: node.nodeId,
-        version: 1,
-        checksum,
-        size: file.buffer.length,
-        status: 'MISSING',
-        createdAt: new Date(),
-      });
-      continue;
+        written: false,
+      };
     }
 
     try {
       await storageNodeService.writeReplica(node.nodeId, storageKey, file.buffer);
-      writtenNodes.push(node.nodeId);
-      successfulAcks++;
-
-      replicas.push({
-        nodeId: node.nodeId,
-        version: 1,
-        checksum,
-        size: file.buffer.length,
-        status: 'HEALTHY',
-        createdAt: new Date(),
-      });
-
-      // Update node capacity tracking
       await nodeService.updateNodeMetrics(node.nodeId, {
         sizeDelta: file.buffer.length,
         objectCountDelta: 1,
@@ -139,17 +124,39 @@ const uploadObject = async ({
         nodeId: node.nodeId,
         severity: 'INFO',
       });
-    } catch (err) {
-      replicas.push({
+
+      return {
+        replica: {
+          nodeId: node.nodeId,
+          version: 1,
+          checksum,
+          size: file.buffer.length,
+          status: 'HEALTHY',
+          createdAt: new Date(),
+        },
         nodeId: node.nodeId,
-        version: 1,
-        checksum,
-        size: file.buffer.length,
-        status: 'MISSING',
-        createdAt: new Date(),
-      });
+        written: true,
+      };
+    } catch (err) {
+      return {
+        replica: {
+          nodeId: node.nodeId,
+          version: 1,
+          checksum,
+          size: file.buffer.length,
+          status: 'MISSING',
+          createdAt: new Date(),
+        },
+        nodeId: node.nodeId,
+        written: false,
+      };
     }
-  }
+  });
+
+  const writeResults = await Promise.all(writePromises);
+  const replicas = writeResults.map((r) => r.replica);
+  const writtenNodes = writeResults.filter((r) => r.written).map((r) => r.nodeId);
+  const successfulAcks = writtenNodes.length;
 
   // Check durability quorum / acknowledgement satisfaction
   if (successfulAcks < requiredAcks) {
@@ -247,54 +254,62 @@ const updateObject = async ({
   const existingNodeIds = currentObj.replicas.map((r) => r.nodeId);
   const primaryNodeId = existingNodeIds[0] || 'node-01';
 
-  const newReplicas = [];
-  const writtenNodes = [];
-  let successfulAcks = 0;
-
-  for (const nodeId of existingNodeIds) {
+  const updatePromises = existingNodeIds.map(async (nodeId) => {
     const isReachable =
       nodeId === primaryNodeId || networkService.canCommunicate(primaryNodeId, nodeId);
 
     if (!isReachable) {
-      newReplicas.push({
+      return {
+        replica: {
+          nodeId,
+          version: currentVersion, // Remains on old version until repaired
+          checksum: currentObj.checksum,
+          size: currentObj.size,
+          status: 'INCONSISTENT',
+          createdAt: new Date(),
+        },
         nodeId,
-        version: currentVersion, // Remains on old version until repaired
-        checksum: currentObj.checksum,
-        size: currentObj.size,
-        status: 'INCONSISTENT',
-        createdAt: new Date(),
-      });
-      continue;
+        written: false,
+      };
     }
 
     try {
       await storageNodeService.writeReplica(nodeId, currentObj.storageKey, file.buffer);
-      writtenNodes.push(nodeId);
-      successfulAcks++;
-
-      newReplicas.push({
-        nodeId,
-        version: newVersion,
-        checksum: newChecksum,
-        size: file.buffer.length,
-        status: 'HEALTHY',
-        createdAt: new Date(),
-      });
-
-      // Update storage size delta
       const sizeDelta = file.buffer.length - currentObj.size;
       await nodeService.updateNodeMetrics(nodeId, { sizeDelta });
-    } catch (writeErr) {
-      newReplicas.push({
+
+      return {
+        replica: {
+          nodeId,
+          version: newVersion,
+          checksum: newChecksum,
+          size: file.buffer.length,
+          status: 'HEALTHY',
+          createdAt: new Date(),
+        },
         nodeId,
-        version: currentVersion,
-        checksum: currentObj.checksum,
-        size: currentObj.size,
-        status: 'INCONSISTENT',
-        createdAt: new Date(),
-      });
+        written: true,
+      };
+    } catch (writeErr) {
+      return {
+        replica: {
+          nodeId,
+          version: currentVersion,
+          checksum: currentObj.checksum,
+          size: currentObj.size,
+          status: 'INCONSISTENT',
+          createdAt: new Date(),
+        },
+        nodeId,
+        written: false,
+      };
     }
-  }
+  });
+
+  const updateResults = await Promise.all(updatePromises);
+  const newReplicas = updateResults.map((r) => r.replica);
+  const writtenNodes = updateResults.filter((r) => r.written).map((r) => r.nodeId);
+  const successfulAcks = writtenNodes.length;
 
   if (successfulAcks < requiredAcks) {
     const error = new Error(

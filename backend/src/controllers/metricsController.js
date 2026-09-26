@@ -5,14 +5,40 @@ const NetworkPartition = require('../models/NetworkPartition');
 const { getRecentActivities } = require('../services/activityService');
 const { successResponse, errorResponse } = require('../utils/response');
 
+// High-performance bounded metrics cache to prevent CPU/DB thrashing under high polling frequencies
+const metricsCache = new Map();
+const CACHE_TTL_MS = 1500; // 1.5 second cache window
+
+/**
+ * Invalidate cached metrics on demand (e.g. after mutations)
+ */
+const invalidateMetricsCache = () => {
+  metricsCache.clear();
+};
+
+/**
+ * Retrieve comprehensive cluster health, capacity, object and recovery telemetry
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 const getMetrics = async (req, res, next) => {
   try {
+    const cacheKey = req.user?._id ? req.user._id.toString() : 'global';
+    const cached = metricsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return successResponse(res, cached.data, 'Cluster metrics retrieved from cache');
+    }
+
     const nodes = await Node.find().lean();
     const totalNodes = nodes.length;
     const healthyNodes = nodes.filter((n) => n.status === 'ONLINE').length;
     const degradedNodes = nodes.filter((n) => n.status === 'DEGRADED').length;
     const offlineNodes = nodes.filter((n) => n.status === 'OFFLINE').length;
     const repairingNodes = nodes.filter((n) => n.status === 'REPAIRING').length;
+
 
     const totalCapacity = nodes.reduce((acc, n) => acc + (n.capacity || 0), 0);
     const totalUsedStorage = nodes.reduce((acc, n) => acc + (n.usedStorage || 0), 0);
@@ -68,12 +94,15 @@ const getMetrics = async (req, res, next) => {
         ? (physicalBytes / logicalBytes).toFixed(2) + 'x'
         : '1.00x';
 
-    // Recovery Timing Metrics
+    // Recovery Timing Metrics - bounded to latest 100 jobs for O(1) performance
     const completedJobs = await RepairJob.find({
       status: 'COMPLETED',
       startedAt: { $exists: true, $ne: null },
       completedAt: { $exists: true, $ne: null },
-    }).lean();
+    })
+      .sort({ completedAt: -1 })
+      .limit(100)
+      .lean();
 
     let fastestRecoveryMs = null;
     let slowestRecoveryMs = null;
@@ -160,6 +189,9 @@ const getMetrics = async (req, res, next) => {
       recentActivity: recentActivities,
     };
 
+    // Store in cache for sub-millisecond response on subsequent polls
+    metricsCache.set(cacheKey, { timestamp: Date.now(), data: metrics });
+
     return successResponse(res, metrics, 'Cluster metrics calculated successfully');
   } catch (error) {
     next(error);
@@ -168,4 +200,5 @@ const getMetrics = async (req, res, next) => {
 
 module.exports = {
   getMetrics,
+  invalidateMetricsCache,
 };

@@ -147,21 +147,26 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
             className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upload-modal-title"
+            aria-describedby="upload-modal-desc"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 sticky top-0 z-10">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400" aria-hidden="true">
                   <UploadCloud className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Upload New Object</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Multi-node replicated distributed object ingest</p>
+                  <h3 id="upload-modal-title" className="text-base font-semibold text-slate-900 dark:text-white">Upload New Object</h3>
+                  <p id="upload-modal-desc" className="text-xs text-slate-500 dark:text-slate-400">Multi-node replicated distributed object ingest</p>
                 </div>
               </div>
               {currentStep === 'idle' && (
                 <button
                   onClick={handleClose}
+                  aria-label="Close upload dialog"
                   className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 >
                   <X className="w-5 h-5" />

@@ -69,6 +69,11 @@ const repairJobSchema = new mongoose.Schema(
   }
 );
 
+// Optimized compound indexes for repair queue processing and metrics
+repairJobSchema.index({ status: 1, createdAt: -1 });
+repairJobSchema.index({ objectId: 1, status: 1 });
+repairJobSchema.index({ status: 1, startedAt: 1, completedAt: 1 });
+
 const RepairJob = mongoose.model('RepairJob', repairJobSchema);
 
 module.exports = RepairJob;

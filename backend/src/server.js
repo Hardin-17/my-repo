@@ -1,13 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const config = require('./config/env');
 const { connectDB } = require('./config/db');
 const routes = require('./routes');
 const { requestLogger } = require('./middleware/loggingMiddleware');
+const { apiLimiter } = require('./middleware/rateLimitMiddleware');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
+
 
 // Initialize MongoDB connection and cluster services
 connectDB().then(async () => {
@@ -65,6 +68,9 @@ app.use(
   })
 );
 
+// HTTP Response Compression (Gzip / Deflate)
+app.use(compression());
+
 // Request ID and Structured Logging Middleware
 app.use(requestLogger);
 
@@ -72,8 +78,8 @@ app.use(requestLogger);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// API Routes
-app.use('/api', routes);
+// API Routes with rate limiting protection
+app.use('/api', apiLimiter, routes);
 
 // Error Handling Middleware
 app.use(notFound);

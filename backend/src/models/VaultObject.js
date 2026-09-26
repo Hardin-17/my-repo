@@ -105,6 +105,13 @@ const vaultObjectSchema = new mongoose.Schema(
   }
 );
 
+// Optimized compound indexes for high-throughput queries and replica scans
+vaultObjectSchema.index({ ownerId: 1, createdAt: -1 });
+vaultObjectSchema.index({ 'replicas.nodeId': 1, 'replicas.status': 1 });
+vaultObjectSchema.index({ checksum: 1 });
+
+
+
 // Method to determine overall object health from replicas
 vaultObjectSchema.methods.recalculateStatus = function () {
   const healthyReplicas = this.replicas.filter((r) => r.status === 'HEALTHY').length;

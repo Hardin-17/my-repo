@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
@@ -75,7 +75,7 @@ export default function ChaosLabPage() {
     recoveryTime: string;
   } | null>(null);
 
-  const fetchLabData = async () => {
+  const fetchLabData = useCallback(async () => {
     try {
       const [nodesRes, objectsRes, jobsRes, metricsRes, metricsAllRes, partitionsRes] = await Promise.allSettled([
         api.get<{ data: StorageNode[] }>('/nodes'),
@@ -121,13 +121,13 @@ export default function ChaosLabPage() {
     } catch (err) {
       console.error('Failed to poll Chaos Lab telemetries:', err);
     }
-  };
+  }, [selectedNodeId, selectedObjectId]);
 
   useEffect(() => {
     fetchLabData();
     const interval = setInterval(fetchLabData, 4000);
     return () => clearInterval(interval);
-  }, [selectedNodeId, selectedObjectId]);
+  }, [fetchLabData]);
 
   // When selected object changes, update selectable replicas
   useEffect(() => {
