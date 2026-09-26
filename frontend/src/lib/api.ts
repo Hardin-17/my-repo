@@ -118,5 +118,10 @@ export const api = {
     });
   },
   delete: <T = any>(endpoint: string) => apiRequest<T>(endpoint, { method: 'DELETE' }),
+  upload: <T = any>(endpoint: string, formData: FormData) =>
+    apiRequest<T>(endpoint, {
+      method: 'POST',
+      body: formData,
+    }),
   download: downloadFile,
 };

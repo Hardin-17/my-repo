@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Shell } from '@/components/layout/Shell';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
@@ -20,7 +21,6 @@ import {
   CheckCircle2,
   HeartPulse,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function StorageNodesPage() {
   const [nodes, setNodes] = useState<StorageNode[]>([]);
@@ -61,32 +61,38 @@ export default function StorageNodesPage() {
   return (
     <ProtectedRoute>
       <Shell>
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 sm:p-5">
+        {/* Page Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-sm"
+        >
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-white tracking-tight">Storage Nodes</h2>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Storage Nodes</h2>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/20 font-semibold">
                 {nodes.filter((n) => n.status === 'ONLINE').length} / {nodes.length} ONLINE
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Distributed node fleet, disk capacity allocation, heartbeat consensus, and zone latency.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchNodes}
-              isLoading={isLoading}
-              title="Refresh Nodes"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchNodes}
+                isLoading={isLoading}
+                title="Refresh Nodes"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </Button>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Interactive React Flow Topology Mesh */}
         <InteractiveClusterTopology nodes={nodes} onRefresh={fetchNodes} />
@@ -94,11 +100,11 @@ export default function StorageNodesPage() {
         {/* Node Cards Grid */}
         <div className="space-y-3 mt-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200 font-mono uppercase tracking-wider flex items-center gap-2">
-              <Server className="w-4 h-4 text-indigo-400" />
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 font-mono uppercase tracking-wider flex items-center gap-2">
+              <Server className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Physical & Logical Storage Fleet
             </h3>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
               Total Capacity: {formatBytes(nodes.reduce((acc, n) => acc + (n.capacity || 0), 0))}
             </span>
           </div>
@@ -113,82 +119,90 @@ export default function StorageNodesPage() {
                   key={node.nodeId}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="p-5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition shadow-sm space-y-4 flex flex-col justify-between group"
+                  className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-sm hover:shadow-md space-y-4 flex flex-col justify-between group"
                 >
                   {/* Card Header */}
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                        <span className="font-mono text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                           {node.nodeId}
                         </span>
                         <StatusBadge status={node.status} size="sm" />
                       </div>
-                      <h4 className="text-sm font-semibold text-slate-200">{node.name}</h4>
-                      <p className="text-[11px] font-mono text-slate-400">
+                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{node.name}</h4>
+                      <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                         {node.zone} · {node.address}
                       </p>
                     </div>
 
-                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-105 transition">
+                    <motion.div
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 transition"
+                    >
                       <Server className="w-4 h-4" />
-                    </div>
+                    </motion.div>
                   </div>
 
                   {/* Capacity Bar */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800/80 font-mono text-xs">
-                    <div className="flex justify-between items-center text-slate-400">
+                  <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 font-mono text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
                       <span>Capacity Utilization</span>
-                      <span className="text-indigo-300 font-semibold">{utilPercent}%</span>
+                      <span className="text-indigo-600 dark:text-indigo-300 font-semibold">{utilPercent}%</span>
                     </div>
 
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-indigo-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${Math.max(2, Number(utilPercent))}%` }}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(2, Number(utilPercent))}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className="bg-indigo-600 dark:bg-indigo-500 h-full rounded-full"
                       />
                     </div>
 
-                    <div className="flex justify-between text-[11px] text-slate-400">
+                    <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
                       <span>{formatBytes(node.usedStorage)} used</span>
                       <span>{formatBytes(node.capacity)} total</span>
                     </div>
                   </div>
 
                   {/* Node Metrics Grid */}
-                  <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-center font-mono text-xs">
+                  <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 text-center font-mono text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-400 block uppercase">Objects</span>
-                      <span className="text-slate-200 font-bold">{node.objectCount}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase">Objects</span>
+                      <span className="text-slate-800 dark:text-slate-200 font-bold">{node.objectCount}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block uppercase">Replicas</span>
-                      <span className="text-indigo-400 font-bold">{node.replicaCount}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase">Replicas</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">{node.replicaCount}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block uppercase">Latency</span>
-                      <span className="text-emerald-400 font-bold">{node.latency}ms</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase">Latency</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">{node.latency}ms</span>
                     </div>
                   </div>
 
                   {/* Card Footer: Heartbeat and Manual Ping */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs font-mono text-slate-400">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs font-mono text-slate-500 dark:text-slate-400">
                     <div className="flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                      <Radio className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
                       <span>{formatRelativeTime(node.lastHeartbeat)}</span>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      isLoading={pingingNodeId === node.nodeId}
-                      onClick={() => handlePingHeartbeat(node.nodeId)}
-                      className="text-[11px] py-1 px-2.5"
-                    >
-                      <HeartPulse className="w-3 h-3 mr-1 text-rose-400" />
-                      <span>Ping</span>
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isLoading={pingingNodeId === node.nodeId}
+                        onClick={() => handlePingHeartbeat(node.nodeId)}
+                        className="text-[11px] py-1 px-2.5"
+                      >
+                        <HeartPulse className="w-3 h-3 mr-1 text-rose-500" />
+                        <span>Ping</span>
+                      </Button>
+                    </motion.div>
                   </div>
                 </motion.div>
               );

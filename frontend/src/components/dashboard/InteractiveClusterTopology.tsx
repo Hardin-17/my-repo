@@ -40,15 +40,15 @@ export const InteractiveClusterTopology: React.FC<InteractiveClusterTopologyProp
       position: { x: 340, y: 30 },
       data: {
         label: (
-          <div className="p-3 rounded-xl bg-slate-900 border-2 border-indigo-500 shadow-xl shadow-indigo-500/20 text-center min-w-[200px]">
+          <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border-2 border-indigo-500 shadow-xl shadow-indigo-500/20 text-center min-w-[200px]">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-6 h-6 rounded-lg bg-indigo-600/30 text-indigo-400 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-600/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                 <Database className="w-3.5 h-3.5" />
               </div>
-              <span className="font-bold text-xs text-white tracking-wide">VAULT Coordinator</span>
+              <span className="font-bold text-xs text-slate-900 dark:text-white tracking-wide">VAULT Coordinator</span>
             </div>
-            <div className="text-[10px] font-mono text-emerald-400 flex items-center justify-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
               {hasRepairing
                 ? 'Repair Coordinator Active'
                 : hasOffline
@@ -76,12 +76,12 @@ export const InteractiveClusterTopology: React.FC<InteractiveClusterTopologyProp
       const isDegraded = node.status === 'DEGRADED';
 
       const borderStyle = isOffline
-        ? 'border-rose-500 bg-rose-950/40 shadow-rose-500/20'
+        ? 'border-rose-500 bg-rose-50/90 dark:bg-rose-950/40 shadow-rose-500/20'
         : isRepairing
-        ? 'border-cyan-400 bg-cyan-950/30 shadow-cyan-400/20 animate-pulse'
+        ? 'border-cyan-400 bg-cyan-50/90 dark:bg-cyan-950/30 shadow-cyan-400/20 animate-pulse'
         : isDegraded
-        ? 'border-amber-400 bg-amber-950/30'
-        : 'border-slate-700/80 hover:border-indigo-500';
+        ? 'border-amber-400 bg-amber-50/90 dark:bg-amber-950/30'
+        : 'border-slate-200 dark:border-slate-700/80 hover:border-indigo-500';
 
       const strokeColor = isOffline
         ? '#f43f5e'
@@ -99,40 +99,40 @@ export const InteractiveClusterTopology: React.FC<InteractiveClusterTopologyProp
           label: (
             <div
               onClick={() => setSelectedNode(node)}
-              className={`p-3 rounded-xl bg-slate-900/95 border-2 transition-all cursor-pointer hover:scale-105 shadow-lg min-w-[165px] ${borderStyle}`}
+              className={`p-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border-2 transition-all cursor-pointer hover:scale-105 shadow-lg min-w-[165px] ${borderStyle}`}
             >
               <div className="flex items-center justify-between gap-1.5 mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <Server
                     className={`w-3.5 h-3.5 ${
                       isOffline
-                        ? 'text-rose-400'
+                        ? 'text-rose-500 dark:text-rose-400'
                         : isRepairing
-                        ? 'text-cyan-400'
-                        : 'text-indigo-400'
+                        ? 'text-cyan-500 dark:text-cyan-400'
+                        : 'text-indigo-600 dark:text-indigo-400'
                     }`}
                   />
-                  <span className="font-semibold font-mono text-xs text-slate-100">
+                  <span className="font-semibold font-mono text-xs text-slate-800 dark:text-slate-100">
                     {node.nodeId}
                   </span>
                 </div>
                 <StatusBadge status={node.status} size="sm" />
               </div>
 
-              <div className="text-[10px] font-mono text-slate-400 space-y-0.5 text-left">
-                <div className="flex justify-between">
-                  <span>Used:</span>
-                  <span className="text-slate-200">{formatBytes(node.usedStorage)}</span>
-                </div>
+              <div className="space-y-1 font-mono text-[10px] text-slate-500 dark:text-slate-400">
                 <div className="flex justify-between">
                   <span>Latency:</span>
-                  <span className={isOffline ? 'text-rose-400' : 'text-emerald-400'}>
-                    {isOffline ? 'TIMEOUT' : `${node.latency}ms`}
+                  <span className="text-slate-700 dark:text-slate-200 font-bold">{node.latency}ms</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Storage:</span>
+                  <span className="text-slate-700 dark:text-slate-200">
+                    {formatBytes(node.usedStorage)} / {formatBytes(node.capacity)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Replicas:</span>
-                  <span className="text-indigo-300 font-semibold">{node.replicaCount}</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">{node.replicaCount}</span>
                 </div>
               </div>
             </div>
@@ -141,54 +141,73 @@ export const InteractiveClusterTopology: React.FC<InteractiveClusterTopologyProp
         style: { background: 'transparent', border: 'none', padding: 0 },
       });
 
-      // Edge from Coordinator to Storage Node
+      // Edge from coordinator to node
       fEdges.push({
-        id: `e-coordinator-${node.nodeId}`,
+        id: `edge-coord-${node.nodeId}`,
         source: 'vault-coordinator',
         target: node.nodeId,
         animated: isOnline || isRepairing,
         style: {
           stroke: strokeColor,
-          strokeWidth: isOffline ? 1.5 : 2,
+          strokeWidth: isOffline ? 1 : 2,
           strokeDasharray: isOffline ? '4 4' : undefined,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: strokeColor,
+          width: 14,
+          height: 14,
         },
       });
     });
+
+    // Mesh edges between adjacent storage nodes to represent peer-to-peer gossip
+    for (let i = 0; i < nodes.length - 1; i++) {
+      const src = nodes[i];
+      const dst = nodes[i + 1];
+      const isMeshActive = src.status === 'ONLINE' && dst.status === 'ONLINE';
+
+      fEdges.push({
+        id: `peer-${src.nodeId}-${dst.nodeId}`,
+        source: src.nodeId,
+        target: dst.nodeId,
+        animated: false,
+        style: {
+          stroke: isMeshActive ? '#475569' : '#334155',
+          strokeWidth: 1,
+          strokeDasharray: '2 2',
+          opacity: 0.5,
+        },
+      });
+    }
 
     return { flowNodes: fNodes, flowEdges: fEdges };
   }, [nodes]);
 
   return (
-    <div className="p-5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm space-y-3 relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold text-white tracking-tight">
-              Interactive Storage Mesh Topology
-            </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              REACT FLOW LIVE MESH
-            </span>
-          </div>
-          <p className="text-xs text-slate-400">
-            Real-time consensus coordinator, replica sync edges, and fault states. Click any node to inspect.
-          </p>
+    <div className="space-y-3">
+      {/* Title & Legend */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 font-mono uppercase tracking-wider flex items-center gap-1.5">
+            <Radio className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            Active Topology & Heartbeat Mesh
+          </h3>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
+            INTERACTIVE
+          </span>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+        <div className="flex items-center gap-3 text-xs font-mono text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
-            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <Radio className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
             Consensus: Active
           </span>
         </div>
       </div>
 
       {/* React Flow Canvas */}
-      <div className="h-[360px] w-full rounded-xl bg-slate-950/80 border border-slate-800 relative">
+      <div className="h-[360px] w-full rounded-xl bg-slate-50/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 relative shadow-inner">
         <ReactFlow
           nodes={flowNodes}
           edges={flowEdges}
@@ -197,28 +216,28 @@ export const InteractiveClusterTopology: React.FC<InteractiveClusterTopologyProp
           attributionPosition="bottom-left"
           proOptions={{ hideAttribution: true }}
         >
-          <Background color="#1e293b" gap={20} size={1} variant={BackgroundVariant.Dots} />
-          <Controls className="bg-slate-900 border border-slate-700 text-white rounded-lg shadow-lg fill-white" />
+          <Background color="#94a3b8" gap={20} size={1} variant={BackgroundVariant.Dots} className="dark:opacity-30 opacity-40" />
+          <Controls className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg shadow-lg fill-slate-900 dark:fill-white" />
         </ReactFlow>
       </div>
 
       {/* Selected Node Details Drawer */}
       {selectedNode && (
-        <div className="p-4 rounded-xl bg-slate-950 border border-indigo-500/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-2">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-950 border border-indigo-200 dark:border-indigo-500/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
               <Server className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="font-bold text-sm text-white">{selectedNode.name}</h4>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">{selectedNode.name}</h4>
                 <StatusBadge status={selectedNode.status} size="sm" />
               </div>
-              <p className="text-xs font-mono text-slate-400">
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-400">
                 {selectedNode.nodeId} · Zone: {selectedNode.zone} · IP: {selectedNode.address}
               </p>
               {selectedNode.failureReason && (
-                <p className="text-[11px] text-rose-400 font-mono mt-0.5 flex items-center gap-1">
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-mono mt-0.5 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" />
                   Fault: {selectedNode.failureReason}
                 </p>
@@ -228,29 +247,29 @@ export const InteractiveClusterTopology: React.FC<InteractiveClusterTopologyProp
 
           <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
             <div>
-              <span className="text-slate-400 block text-[10px]">Used / Capacity</span>
-              <span className="text-slate-200">
+              <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Used / Capacity</span>
+              <span className="text-slate-800 dark:text-slate-200 font-semibold">
                 {formatBytes(selectedNode.usedStorage)} / {formatBytes(selectedNode.capacity)}
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px]">Latency</span>
-              <span className={selectedNode.status === 'OFFLINE' ? 'text-rose-400' : 'text-emerald-400'}>
+              <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Latency</span>
+              <span className={selectedNode.status === 'OFFLINE' ? 'text-rose-500 dark:text-rose-400 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-bold'}>
                 {selectedNode.status === 'OFFLINE' ? 'N/A' : `${selectedNode.latency}ms`}
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px]">Stored Replicas</span>
-              <span className="text-indigo-300 font-semibold">{selectedNode.replicaCount}</span>
+              <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Stored Replicas</span>
+              <span className="text-indigo-600 dark:text-indigo-300 font-semibold">{selectedNode.replicaCount}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px]">Heartbeat</span>
-              <span className="text-slate-300">{formatRelativeTime(selectedNode.lastHeartbeat)}</span>
+              <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Heartbeat</span>
+              <span className="text-slate-700 dark:text-slate-300">{formatRelativeTime(selectedNode.lastHeartbeat)}</span>
             </div>
 
             <button
               onClick={() => setSelectedNode(null)}
-              className="p-1 text-slate-400 hover:text-white"
+              className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>

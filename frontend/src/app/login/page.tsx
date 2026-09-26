@@ -8,6 +8,7 @@ import { Database, Lock, Mail, ArrowRight, AlertCircle, ShieldAlert, Sparkles } 
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -51,7 +52,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 bg-grid-pattern relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 bg-grid-pattern relative flex items-center justify-center p-4 sm:p-6 overflow-hidden transition-colors duration-200">
+      {/* Top right Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle showLabel />
+      </div>
+
       {/* Background ambient lighting */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -59,15 +65,18 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md bg-slate-900/90 border border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md relative z-10 space-y-6"
+        className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md relative z-10 space-y-6"
       >
         {/* Brand identity */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 mb-1">
-            <Database className="w-6 h-6 text-indigo-300" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">VAULT Control Plane</h1>
-          <p className="text-xs text-slate-400">
+          <motion.div
+            whileHover={{ rotate: 10, scale: 1.05 }}
+            className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 mb-1"
+          >
+            <Database className="w-6 h-6 text-indigo-600 dark:text-indigo-300" />
+          </motion.div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">VAULT Control Plane</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Sign in to access fault-tolerant cluster telemetry & storage nodes
           </p>
         </div>
@@ -77,7 +86,7 @@ export default function LoginPage() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2"
+            className="p-3 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2"
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{formError || error}</span>
@@ -108,38 +117,54 @@ export default function LoginPage() {
             autoComplete="current-password"
           />
 
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            isLoading={isSubmitting}
-          >
-            <span>Sign In to Cluster</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              isLoading={isSubmitting}
+            >
+              <span>Sign In to Cluster</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </motion.div>
         </form>
 
-        {/* Quick Demo Operator Button */}
-        <div className="pt-2 border-t border-slate-800/80">
-          <button
-            type="button"
-            onClick={handleDemoLogin}
-            className="w-full py-2.5 px-3 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 transition text-xs font-mono flex items-center justify-center gap-2 group"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 group-hover:text-cyan-300 transition-colors" />
-            <span>Instant Demo Operator Access (Phase 1)</span>
-          </button>
+        {/* Divider */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+          </div>
+          <span className="relative px-3 text-[11px] font-mono text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 uppercase">
+            Quick Evaluation
+          </span>
         </div>
 
-        {/* Footer Navigation */}
-        <div className="text-center text-xs text-slate-400">
-          <span>Need operator credentials? </span>
-          <Link
-            href="/register"
-            className="text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-4"
+        {/* 1-Click Demo Evaluation Login */}
+        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            onClick={handleDemoLogin}
+            className="w-full border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-600/10 gap-2"
           >
-            Register new node operator
-          </Link>
+            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>1-Click Hackathon Demo Access</span>
+          </Button>
+        </motion.div>
+
+        {/* Footer Links */}
+        <div className="text-center pt-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Need an operator key?{' '}
+            <Link
+              href="/register"
+              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition underline-offset-4 hover:underline"
+            >
+              Register here
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>

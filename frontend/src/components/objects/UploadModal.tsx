@@ -61,9 +61,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   };
 
   const handleClose = () => {
-    if (currentStep === 'idle' || currentStep === 'completed' || currentStep === 'error') {
-      resetState();
-      onClose();
+    if (currentStep === 'uploading' || currentStep === 'creating_replicas') return;
+    resetState();
+    onClose();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -84,17 +89,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
   const handleStartUpload = async () => {
     if (!selectedFile) return;
 
-    setErrorMessage(null);
     setCurrentStep('uploading');
+    setErrorMessage(null);
 
     const formData = new FormData();
     formData.append('file', selectedFile);
@@ -102,318 +101,319 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     formData.append('durabilityPolicy', durabilityPolicy);
     formData.append('readPolicy', readPolicy);
 
-    // Progress pipeline visualizer
-    const stepTimer = (step: UploadStep, delayMs: number) =>
-      new Promise<void>((resolve) =>
-        setTimeout(() => {
-          setCurrentStep(step);
-          resolve();
-        }, delayMs)
-      );
-
     try {
-      // Transition through pipeline stages during the upload lifecycle
-      const uploadPromise = api.post<{ success: boolean; data: VaultObject }>('/objects', formData);
+      setTimeout(() => setCurrentStep('checksum'), 400);
+      setTimeout(() => setCurrentStep('selecting_nodes'), 900);
+      setTimeout(() => setCurrentStep('creating_replicas'), 1500);
 
-      await stepTimer('checksum', 450);
-      await stepTimer('selecting_nodes', 450);
-      await stepTimer('creating_replicas', 500);
+      const response = await api.upload<{
+        success: boolean;
+        message: string;
+        data: VaultObject;
+      }>('/objects', formData);
 
-      const response = await uploadPromise;
-
-      await stepTimer('verifying', 400);
-      setCurrentStep('completed');
+      setCurrentStep('verifying');
 
       setTimeout(() => {
-        onUploadSuccess(response.data);
-        handleClose();
-      }, 1000);
+        setCurrentStep('completed');
+        if (response.data) {
+          onUploadSuccess(response.data);
+        }
+        setTimeout(() => {
+          handleClose();
+        }, 1200);
+      }, 600);
     } catch (err: any) {
       setCurrentStep('error');
-      setErrorMessage(err.message || 'Object upload failed');
+      setErrorMessage(err.message || 'Object upload failed due to insufficient available nodes or network timeout.');
     }
   };
 
   const stepsList = [
-    { id: 'uploading', label: 'Streaming File' },
-    { id: 'checksum', label: 'Computing SHA-256' },
+    { id: 'uploading', label: 'Streaming Payload' },
+    { id: 'checksum', label: 'Calculating SHA-256' },
     { id: 'selecting_nodes', label: 'Selecting Nodes' },
     { id: 'creating_replicas', label: `${replicationFactor}x Replicas (${durabilityPolicy})` },
     { id: 'verifying', label: 'Verifying Storage' },
   ];
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90 sticky top-0 z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-              <UploadCloud className="w-4 h-4 text-indigo-300" />
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 sticky top-0 z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <UploadCloud className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Upload New Object</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Multi-node replicated distributed object ingest</p>
+                </div>
+              </div>
+              {currentStep === 'idle' && (
+                <button
+                  onClick={handleClose}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
-            <div>
-              <h3 className="text-base font-semibold text-white">Upload New Object</h3>
-              <p className="text-xs text-slate-400">Multi-node replicated distributed object ingest</p>
-            </div>
-          </div>
-          {currentStep === 'idle' && (
-            <button
-              onClick={handleClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
 
-        {/* Content Body */}
-        <div className="p-6 space-y-5">
-          {currentStep === 'idle' ? (
-            <>
-              {/* Dropzone */}
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 ${
-                  isDragging
-                    ? 'border-indigo-500 bg-indigo-500/10'
-                    : selectedFile
-                    ? 'border-emerald-500/50 bg-slate-950/60'
-                    : 'border-slate-700/80 bg-slate-950/40 hover:border-slate-600 hover:bg-slate-950/80'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
+            {/* Content Body */}
+            <div className="p-6 space-y-5">
+              {currentStep === 'idle' ? (
+                <>
+                  {/* Dropzone */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 ${
+                      isDragging
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
+                        : selectedFile
+                        ? 'border-emerald-500/50 bg-emerald-50/50 dark:bg-slate-950/60'
+                        : 'border-slate-300 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-950/40 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-950/80'
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
 
-                {selectedFile ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-                      <File className="w-5 h-5" />
+                    {selectedFile ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
+                          <File className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[320px]">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                            {formatBytes(selectedFile.size)} · {selectedFile.type || 'Binary stream'}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400">
+                          <UploadCloud className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                            Drag and drop your file here, or{' '}
+                            <span className="text-indigo-600 dark:text-indigo-400 hover:underline">browse files</span>
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Max upload size: 500 MB · Cryptographic SHA-256 computed on ingest
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Replication Factor Selection */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                        <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        Replication Factor
+                      </label>
+                      <span className="text-xs font-mono text-indigo-600 dark:text-indigo-300">
+                        {replicationFactor} distinct storage {replicationFactor === 1 ? 'node' : 'nodes'}
+                      </span>
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-white truncate max-w-[320px]">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-xs text-slate-400 font-mono">
-                        {formatBytes(selectedFile.size)} · {selectedFile.type || 'Binary stream'}
-                      </p>
+
+                    <div className="grid grid-cols-5 gap-2">
+                      {[1, 2, 3, 4, 5].map((factor) => (
+                        <button
+                          key={factor}
+                          type="button"
+                          onClick={() => setReplicationFactor(factor)}
+                          className={`py-2 px-3 rounded-lg border font-mono text-xs font-bold transition-all ${
+                            replicationFactor === factor
+                              ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {factor}x
+                        </button>
+                      ))}
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
-                      <UploadCloud className="w-5 h-5 text-indigo-400" />
+
+                  {/* Durability Policy Selection */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                        <Lock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                        Write Durability Policy (Acks)
+                      </label>
+                      <span className="text-xs font-mono text-amber-600 dark:text-amber-300">
+                        {durabilityPolicy === 'QUORUM'
+                          ? `${Math.floor(replicationFactor / 2) + 1} of ${replicationFactor} acks`
+                          : durabilityPolicy === 'ALL'
+                          ? `${replicationFactor} of ${replicationFactor} acks`
+                          : '1 ack'}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-200">
-                        Drag and drop your file here, or{' '}
-                        <span className="text-indigo-400 hover:underline">browse files</span>
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Max upload size: 500 MB · Cryptographic SHA-256 computed on ingest
-                      </p>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'ONE', label: 'ONE', desc: 'Fastest (1 ack)' },
+                        { id: 'QUORUM', label: 'QUORUM (Recommended)', desc: 'Majority consensus' },
+                        { id: 'ALL', label: 'ALL', desc: 'Strict (100% acks)' },
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setDurabilityPolicy(p.id as DurabilityPolicy)}
+                          className={`p-2.5 rounded-lg border text-left transition-all ${
+                            durabilityPolicy === p.id
+                              ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/60 text-amber-800 dark:text-amber-300 shadow-sm'
+                              : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="font-mono text-xs font-bold">{p.label}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{p.desc}</div>
+                        </button>
+                      ))}
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
 
-              {/* Replication Factor Selection */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                    <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                    Replication Factor
-                  </label>
-                  <span className="text-xs font-mono text-indigo-300">
-                    {replicationFactor} distinct storage {replicationFactor === 1 ? 'node' : 'nodes'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map((factor) => (
-                    <button
-                      key={factor}
-                      type="button"
-                      onClick={() => setReplicationFactor(factor)}
-                      className={`py-2 px-3 rounded-lg border font-mono text-xs font-bold transition-all ${
-                        replicationFactor === factor
-                          ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white'
-                      }`}
-                    >
-                      {factor}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Durability Policy Selection */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    Write Durability Policy (Acks)
-                  </label>
-                  <span className="text-xs font-mono text-amber-300">
-                    {durabilityPolicy === 'QUORUM'
-                      ? `${Math.floor(replicationFactor / 2) + 1} of ${replicationFactor} acks`
-                      : durabilityPolicy === 'ALL'
-                      ? `${replicationFactor} of ${replicationFactor} acks`
-                      : '1 ack'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'ONE', label: 'ONE', desc: 'Fastest (1 ack)' },
-                    { id: 'QUORUM', label: 'QUORUM (Recommended)', desc: 'Majority consensus' },
-                    { id: 'ALL', label: 'ALL', desc: 'Strict (100% acks)' },
-                  ].map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setDurabilityPolicy(p.id as DurabilityPolicy)}
-                      className={`p-2.5 rounded-lg border text-left transition-all ${
-                        durabilityPolicy === p.id
-                          ? 'bg-amber-500/10 border-amber-500/60 text-amber-300 shadow-sm'
-                          : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                      }`}
-                    >
-                      <div className="font-mono text-xs font-bold">{p.label}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{p.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Read Policy Selection */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                    <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                    Read / Retrieval Policy
-                  </label>
-                  <span className="text-xs font-mono text-cyan-300">{readPolicy}</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'ANY_HEALTHY', label: 'ANY HEALTHY', desc: 'First online replica' },
-                    { id: 'LOWEST_LATENCY', label: 'LOWEST LATENCY', desc: 'Fastest response' },
-                    { id: 'QUORUM', label: 'QUORUM', desc: 'Consensus verified' },
-                  ].map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setReadPolicy(p.id as ReadPolicy)}
-                      className={`p-2.5 rounded-lg border text-left transition-all ${
-                        readPolicy === p.id
-                          ? 'bg-cyan-500/10 border-cyan-500/60 text-cyan-300 shadow-sm'
-                          : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                      }`}
-                    >
-                      <div className="font-mono text-xs font-bold">{p.label}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{p.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
-                <Button variant="ghost" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  disabled={!selectedFile}
-                  onClick={handleStartUpload}
-                >
-                  <span>Upload & Replicate</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            </>
-          ) : currentStep === 'error' ? (
-            <div className="py-6 text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-base font-bold text-white">Upload Failed</h4>
-                <p className="text-xs text-rose-300 max-w-sm mx-auto">{errorMessage}</p>
-              </div>
-              <Button variant="secondary" onClick={() => setCurrentStep('idle')}>
-                Try Again
-              </Button>
-            </div>
-          ) : currentStep === 'completed' ? (
-            <div className="py-6 text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h4 className="text-base font-bold text-white">Object Stored & Replicated</h4>
-              <p className="text-xs text-slate-400">
-                Metadata persisted with {durabilityPolicy} durability and {replicationFactor} replicas confirmed.
-              </p>
-            </div>
-          ) : (
-            /* Upload in-flight step pipeline */
-            <div className="py-6 space-y-5">
-              <div className="flex items-center justify-center gap-3">
-                <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
-                <h4 className="text-sm font-semibold text-white tracking-wide">
-                  Ingesting Distributed Object...
-                </h4>
-              </div>
-
-              <div className="space-y-2 max-w-xs mx-auto">
-                {stepsList.map((step) => {
-                  const isActive = currentStep === step.id;
-                  const isPast =
-                    stepsList.findIndex((s) => s.id === currentStep) >
-                    stepsList.findIndex((s) => s.id === step.id);
-
-                  return (
-                    <div
-                      key={step.id}
-                      className={`flex items-center justify-between p-2 rounded-lg text-xs font-mono transition-colors ${
-                        isActive
-                          ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40'
-                          : isPast
-                          ? 'text-emerald-400 bg-emerald-950/20'
-                          : 'text-slate-400'
-                      }`}
-                    >
-                      <span>{step.label}</span>
-                      {isPast ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      ) : isActive ? (
-                        <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
-                      ) : (
-                        <span className="w-2 h-2 rounded-full bg-slate-700" />
-                      )}
+                  {/* Read Policy Selection */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                        <Cpu className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
+                        Read / Retrieval Policy
+                      </label>
+                      <span className="text-xs font-mono text-cyan-600 dark:text-cyan-300">{readPolicy}</span>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'ANY_HEALTHY', label: 'ANY HEALTHY', desc: 'First online replica' },
+                        { id: 'LOWEST_LATENCY', label: 'LOWEST LATENCY', desc: 'Fastest response' },
+                        { id: 'QUORUM', label: 'QUORUM', desc: 'Consensus verified' },
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setReadPolicy(p.id as ReadPolicy)}
+                          className={`p-2.5 rounded-lg border text-left transition-all ${
+                            readPolicy === p.id
+                              ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-300 dark:border-cyan-500/60 text-cyan-800 dark:text-cyan-300 shadow-sm'
+                              : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="font-mono text-xs font-bold">{p.label}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{p.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                    <Button variant="ghost" onClick={handleClose}>
+                      Cancel
+                    </Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <Button
+                        variant="primary"
+                        disabled={!selectedFile}
+                        onClick={handleStartUpload}
+                      >
+                        <span>Upload & Replicate</span>
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </motion.div>
+                  </div>
+                </>
+              ) : currentStep === 'error' ? (
+                <div className="py-6 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 flex items-center justify-center mx-auto">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white">Upload Failed</h4>
+                    <p className="text-xs text-rose-600 dark:text-rose-300 max-w-sm mx-auto">{errorMessage}</p>
+                  </div>
+                  <Button variant="secondary" onClick={() => setCurrentStep('idle')}>
+                    Try Again
+                  </Button>
+                </div>
+              ) : currentStep === 'completed' ? (
+                <div className="py-6 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white">Object Stored & Replicated</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Metadata persisted with {durabilityPolicy} durability and {replicationFactor} replicas confirmed.
+                  </p>
+                </div>
+              ) : (
+                /* Upload in-flight step pipeline */
+                <div className="py-6 space-y-5">
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="w-6 h-6 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white tracking-wide">
+                      Ingesting Distributed Object...
+                    </h4>
+                  </div>
+
+                  <div className="space-y-2 max-w-xs mx-auto">
+                    {stepsList.map((step) => {
+                      const isActive = currentStep === step.id;
+                      const isPast =
+                        stepsList.findIndex((s) => s.id === currentStep) >
+                        stepsList.findIndex((s) => s.id === step.id);
+
+                      return (
+                        <div
+                          key={step.id}
+                          className={`flex items-center justify-between p-2 rounded-lg text-xs font-mono transition-colors ${
+                            isActive
+                              ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/40'
+                              : isPast
+                              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+                              : 'text-slate-400 dark:text-slate-500'
+                          }`}
+                        >
+                          <span>{step.label}</span>
+                          {isPast ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                          ) : isActive ? (
+                            <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </motion.div>
         </div>
-      </motion.div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };

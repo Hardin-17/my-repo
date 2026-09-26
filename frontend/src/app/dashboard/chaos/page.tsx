@@ -283,18 +283,18 @@ export default function ChaosLabPage() {
     <ProtectedRoute>
       <Shell>
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 rounded-xl p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-xl p-5 shadow-sm">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
+              <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
                 <Flame className="w-5 h-5" />
               </div>
-              <h2 className="text-xl font-bold text-white tracking-tight">VAULT CHAOS LAB</h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">VAULT CHAOS LAB</h2>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20 font-semibold">
                 FAULT INJECTION ACTIVE
               </span>
             </div>
-            <p className="text-xs text-slate-400 italic">
+            <p className="text-xs text-slate-500 dark:text-slate-400 italic">
               &quot;Break the cluster. Watch Vault recover.&quot; Real backend failure injection with automated self-healing.
             </p>
           </div>
@@ -309,24 +309,24 @@ export default function ChaosLabPage() {
         {/* Chaos Injection Controls Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card 1: Node Failure Simulation */}
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
+          <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-wider text-rose-400 flex items-center gap-1.5 font-bold">
+                <span className="text-xs font-mono uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-bold">
                   <Server className="w-4 h-4" /> Node Failure Injection
                 </span>
                 {currentNode && <StatusBadge status={currentNode.status} size="sm" />}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Simulate hardware, kernel panic, or power dropouts on a target storage node.
               </p>
 
               <div className="space-y-1 pt-2">
-                <label className="text-[11px] font-mono uppercase text-slate-400">Select Target Node</label>
+                <label className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">Select Target Node</label>
                 <select
                   value={selectedNodeId}
                   onChange={(e) => setSelectedNodeId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-rose-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-rose-500"
                 >
                   {nodes.map((node) => (
                     <option key={node.nodeId} value={node.nodeId}>
@@ -337,7 +337,7 @@ export default function ChaosLabPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800">
+            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
               <Button
                 variant="danger"
                 size="sm"
@@ -356,34 +356,34 @@ export default function ChaosLabPage() {
                 onClick={handleRecoverNode}
                 className="w-full text-xs"
               >
-                <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-500 dark:text-emerald-400" />
                 <span>Recover Node</span>
               </Button>
             </div>
           </div>
 
           {/* Card 2: Silent Data Corruption Injection */}
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
+          <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-wider text-amber-400 flex items-center gap-1.5 font-bold">
+                <span className="text-xs font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-bold">
                   <Bug className="w-4 h-4" /> Data Corruption (Bit-Rot)
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/20 font-semibold">
                   BYTE FLIP
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Invert physical bytes on a replica volume to test cryptographic SHA-256 scrubbing.
               </p>
 
               <div className="space-y-2 pt-2">
                 <div>
-                  <label className="text-[11px] font-mono uppercase text-slate-400">Select Object</label>
+                  <label className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">Select Object</label>
                   <select
                     value={selectedObjectId}
                     onChange={(e) => setSelectedObjectId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500"
                   >
                     {objects.map((obj) => (
                       <option key={obj.objectId} value={obj.objectId}>
@@ -394,11 +394,11 @@ export default function ChaosLabPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-mono uppercase text-slate-400">Target Replica Node</label>
+                  <label className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">Target Replica Node</label>
                   <select
                     value={selectedReplicaNodeId}
                     onChange={(e) => setSelectedReplicaNodeId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500"
                   >
                     {currentObject?.replicas?.map((r) => (
                       <option key={r.nodeId} value={r.nodeId}>
@@ -410,54 +410,54 @@ export default function ChaosLabPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-800">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={!selectedObjectId || !selectedReplicaNodeId || isProcessing}
                 onClick={handleOpenCorruptConfirm}
-                className="w-full text-xs hover:border-amber-500 hover:text-amber-300"
+                className="w-full text-xs hover:border-amber-500 hover:text-amber-500 dark:hover:text-amber-300"
               >
-                <ShieldAlert className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                <ShieldAlert className="w-3.5 h-3.5 mr-1 text-amber-500 dark:text-amber-400" />
                 <span>Corrupt Replica & Verify</span>
               </Button>
             </div>
           </div>
 
           {/* Card 3: Network Partition Simulation (Phase 4 Real Implementation) */}
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
+          <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 font-bold">
+                <span className="text-xs font-mono uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1.5 font-bold">
                   <Network className="w-4 h-4" /> Network Partition Lab
                 </span>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-semibold ${
                   activePartitions.length > 0
-                    ? 'bg-rose-500/10 text-rose-300 border-rose-500/30 animate-pulse'
-                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                    ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30 animate-pulse'
+                    : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
                 }`}>
                   {activePartitions.length > 0 ? `${activePartitions.length} PARTITION ACTIVE` : 'MESH CONNECTED'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Partition nodes into isolated network groups. Nodes remain online, but inter-partition links are blocked.
               </p>
 
               {/* Group assignment selectors */}
               <div className="space-y-2 pt-2">
-                <div className="text-[11px] font-mono text-slate-300 flex items-center justify-between">
+                <div className="text-[11px] font-mono text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span>Assign Nodes to Groups (Click to switch):</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded-lg bg-slate-950 border border-cyan-500/30 space-y-1">
-                    <span className="text-[10px] text-cyan-400 font-bold block">GROUP A:</span>
+                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-cyan-500/30 space-y-1">
+                    <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold block">GROUP A:</span>
                     <div className="flex flex-wrap gap-1">
                       {partitionGroupA.map((id) => (
                         <button
                           key={id}
                           type="button"
                           onClick={() => toggleNodeGroup(id)}
-                          className="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 hover:bg-cyan-900 text-[11px]"
+                          className="px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/50 hover:bg-cyan-200 dark:hover:bg-cyan-900 text-[11px]"
                           title="Click to move to Group B"
                         >
                           {id}
@@ -466,15 +466,15 @@ export default function ChaosLabPage() {
                     </div>
                   </div>
 
-                  <div className="p-2 rounded-lg bg-slate-950 border border-purple-500/30 space-y-1">
-                    <span className="text-[10px] text-purple-400 font-bold block">GROUP B:</span>
+                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-purple-500/30 space-y-1">
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold block">GROUP B:</span>
                     <div className="flex flex-wrap gap-1">
                       {partitionGroupB.map((id) => (
                         <button
                           key={id}
                           type="button"
                           onClick={() => toggleNodeGroup(id)}
-                          className="px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-500/50 hover:bg-purple-900 text-[11px]"
+                          className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 hover:bg-purple-200 dark:hover:bg-purple-900 text-[11px]"
                           title="Click to move to Group A"
                         >
                           {id}
@@ -486,7 +486,7 @@ export default function ChaosLabPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800">
+            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
               <Button
                 variant="danger"
                 size="sm"
@@ -503,9 +503,9 @@ export default function ChaosLabPage() {
                 size="sm"
                 disabled={activePartitions.length === 0 || isProcessing}
                 onClick={() => handleRecoverPartition()}
-                className="w-full text-xs hover:border-emerald-500 hover:text-emerald-300"
+                className="w-full text-xs hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-300"
               >
-                <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-500 dark:text-emerald-400" />
                 <span>Heal All Links</span>
               </Button>
             </div>
@@ -514,11 +514,11 @@ export default function ChaosLabPage() {
 
         {/* Active Partitions Panel (if partitions exist) */}
         {activePartitions.length > 0 && (
-          <div className="p-4 rounded-xl bg-slate-900 border border-rose-500/40 space-y-2">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/40 space-y-2 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
-                <h4 className="text-xs font-bold font-mono text-rose-300 uppercase tracking-wide">
+                <AlertTriangle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
+                <h4 className="text-xs font-bold font-mono text-rose-700 dark:text-rose-300 uppercase tracking-wide">
                   Active Network Partitions in Cluster
                 </h4>
               </div>
@@ -526,9 +526,9 @@ export default function ChaosLabPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleRecoverPartition()}
-                className="text-xs hover:border-emerald-500 hover:text-emerald-300"
+                className="text-xs hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-300"
               >
-                <RotateCcw className="w-3 h-3 mr-1 text-emerald-400" />
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-emerald-500 dark:text-emerald-400" />
                 Heal Network Partition
               </Button>
             </div>
@@ -555,50 +555,50 @@ export default function ChaosLabPage() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-5 rounded-xl bg-slate-900 border border-emerald-500/40 shadow-lg space-y-3"
+            className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/40 shadow-lg space-y-3"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
                   Fault Recovery Scorecard
                 </h3>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 font-semibold">
                 PROVEN SELF-HEALED
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-xs font-mono">
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">EVENT</span>
-                <span className="text-slate-200 font-semibold">{lastScorecard.failureType}</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">EVENT</span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">{lastScorecard.failureType}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">TARGET</span>
-                <span className="text-indigo-400 font-semibold truncate block">
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">TARGET</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-semibold truncate block">
                   {lastScorecard.target}
                 </span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">AFFECTED</span>
-                <span className="text-amber-400 font-semibold">{lastScorecard.affectedObjects}</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">AFFECTED</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">{lastScorecard.affectedObjects}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">REPAIRED</span>
-                <span className="text-emerald-400 font-semibold">{lastScorecard.objectsRepaired}</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">REPAIRED</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{lastScorecard.objectsRepaired}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">DATA LOST</span>
-                <span className="text-emerald-400 font-semibold">{lastScorecard.dataLost}</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">DATA LOST</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{lastScorecard.dataLost}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">REPLICAS</span>
-                <span className="text-indigo-300 font-semibold">{lastScorecard.replicasRestored}</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">REPLICAS</span>
+                <span className="text-indigo-600 dark:text-indigo-300 font-semibold">{lastScorecard.replicasRestored}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">RECOVERY TIME</span>
-                <span className="text-cyan-300 font-semibold">{lastScorecard.recoveryTime}</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">RECOVERY TIME</span>
+                <span className="text-cyan-600 dark:text-cyan-300 font-semibold">{lastScorecard.recoveryTime}</span>
               </div>
             </div>
           </motion.div>
@@ -607,48 +607,48 @@ export default function ChaosLabPage() {
         {/* Live Repair Queue & Active Progress */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Active Repair Pipeline */}
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-semibold text-white tracking-tight">
+                <Zap className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
                   Self-Healing Repair Queue
                 </h3>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 font-semibold">
                 {repairJobs.filter((j) => j.status !== 'COMPLETED').length} ACTIVE
               </span>
             </div>
 
             <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
               {repairJobs.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 font-mono">
+                <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500 font-mono">
                   No repair jobs active or queued. Cluster replication factor is healthy.
                 </div>
               ) : (
                 repairJobs.slice(0, 10).map((job) => (
                   <div
                     key={job.jobId}
-                    className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs"
+                    className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 font-mono text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-semibold">{job.objectId}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                        <span className="text-slate-900 dark:text-white font-semibold">{job.objectId}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400">
                           {job.reason}
                         </span>
                       </div>
                       <StatusBadge status={job.status} size="sm" />
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                       <span>Source: {job.sourceNodeId || 'Locating...'}</span>
-                      <ArrowRight className="w-3 h-3 text-slate-600" />
+                      <ArrowRight className="w-3 h-3 text-slate-400 dark:text-slate-600" />
                       <span>Target: {job.targetNodeId || 'Selecting...'}</span>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                       <div
                         className="bg-cyan-500 h-full transition-all duration-300"
                         style={{ width: `${job.progress || (job.status === 'COMPLETED' ? 100 : 30)}%` }}
@@ -661,15 +661,15 @@ export default function ChaosLabPage() {
           </div>
 
           {/* Real-time Fault Recovery Timeline */}
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-semibold text-white tracking-tight">
+                <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
                   Fault & Recovery Timeline
                 </h3>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 font-semibold">
                 EVENT JOURNAL
               </span>
             </div>
@@ -696,11 +696,11 @@ export default function ChaosLabPage() {
                 .slice(0, 10)
                 .map((event, idx) => (
                   <div key={event._id || idx} className="flex items-start gap-3 text-xs">
-                    <span className="text-[11px] text-slate-400 font-mono shrink-0 mt-0.5">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
                       {formatRelativeTime(event.timestamp)}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-200 leading-snug font-mono text-[11px]">
+                      <p className="text-slate-800 dark:text-slate-200 leading-snug font-mono text-[11px]">
                         {event.message}
                       </p>
                     </div>
@@ -713,32 +713,32 @@ export default function ChaosLabPage() {
         {/* Confirmation Modal */}
         <AnimatePresence>
           {confirmModal.isOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl"
+                className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl"
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       confirmModal.isDestructive
-                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                        : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                        ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30'
+                        : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30'
                     }`}
                   >
                     <AlertTriangle className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">{confirmModal.title}</h3>
-                    <p className="text-xs text-slate-400">Chaos Injection Safety Check</p>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">{confirmModal.title}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Chaos Injection Safety Check</p>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed">{confirmModal.description}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{confirmModal.description}</p>
 
-                <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
                   <Button
                     variant="ghost"
                     size="sm"
