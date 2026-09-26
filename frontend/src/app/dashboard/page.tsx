@@ -27,6 +27,8 @@ import {
   CheckCircle2,
   RefreshCw,
   Flame,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
 interface BackendHealth {
@@ -62,6 +64,21 @@ export default function DashboardPage() {
   const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [hasDismissedTour, setHasDismissedTour] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const dismissed = localStorage.getItem('vault_tour_banner_dismissed');
+      setHasDismissedTour(dismissed === 'true');
+    }
+  }, []);
+
+  const dismissTourBanner = () => {
+    setHasDismissedTour(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vault_tour_banner_dismissed', 'true');
+    }
+  };
 
   const fetchClusterData = async () => {
     try {
@@ -161,6 +178,49 @@ export default function DashboardPage() {
               </motion.div>
             </div>
           </motion.div>
+
+          {/* Creative Interactive Onboarding Tour Banner */}
+          {!hasDismissedTour && (
+            <motion.div
+              variants={itemVariants}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-200 dark:border-indigo-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/15 dark:bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-300" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    Welcome to the VAULT Control Plane!
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">New</span>
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Explore the 5-node storage mesh, tunable quorum math, and self-healing engine in our interactive tour.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <Link
+                  href="/onboarding"
+                  className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Start Tour</span>
+                </Link>
+                <button
+                  onClick={dismissTourBanner}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-xs"
+                  title="Dismiss banner"
+                  aria-label="Dismiss onboarding banner"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* Core Control-Plane Metric Cards with Live Data */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

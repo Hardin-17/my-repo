@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Menu, Activity, ShieldCheck, Cpu, LogOut } from 'lucide-react';
+import { Menu, Activity, ShieldCheck, Cpu, LogOut, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
@@ -55,6 +56,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           <Cpu className="w-3 h-3" />
           <span>{user?.role || 'Operator'}</span>
         </div>
+
+        {/* Interactive Tour Button */}
+        <Link
+          href="/onboarding"
+          className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:text-indigo-300 transition px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/80 font-medium"
+          title="Interactive Onboarding & Architecture Tour"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span className="hidden md:inline">Tour</span>
+        </Link>
 
         {/* Theme Toggle Button */}
         <ThemeToggle />

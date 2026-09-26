@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Database, Lock, Mail, ArrowRight, AlertCircle, ShieldAlert, Sparkles } from 'lucide-react';
+import { Database, Lock, Mail, ArrowRight, AlertCircle, ShieldAlert, Sparkles, Compass } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -155,7 +155,7 @@ export default function LoginPage() {
         </motion.div>
 
         {/* Footer Links */}
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 space-y-2">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Need an operator key?{' '}
             <Link
@@ -165,6 +165,17 @@ export default function LoginPage() {
               Register here
             </Link>
           </p>
+
+          <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80">
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Interactive Architecture Tour</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
       </motion.div>
     </div>

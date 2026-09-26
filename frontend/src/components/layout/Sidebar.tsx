@@ -14,6 +14,7 @@ import {
   LogOut,
   X,
   HardDrive,
+  Compass,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -27,6 +28,7 @@ const navItems = [
   { name: 'Storage Nodes', href: '/dashboard/nodes', icon: Server },
   { name: 'Object Explorer', href: '/dashboard/objects', icon: HardDrive },
   { name: 'Chaos Lab', href: '/dashboard/chaos', icon: Zap },
+  { name: 'Architecture Tour', href: '/onboarding', icon: Compass, badge: 'Guide' },
   { name: 'Replication Policy', href: '/dashboard#replication', icon: Layers, badge: 'Phase 4' },
   { name: 'Network Partition', href: '/dashboard/chaos#network-partition', icon: ShieldCheck, badge: 'Phase 4' },
 ];
