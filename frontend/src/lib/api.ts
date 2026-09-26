@@ -34,11 +34,18 @@ export async function apiRequest<T = any>(
 
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+  // Add a 8-second request timeout to prevent hanging UI spinners
+  const controller = new AbortController();
+  const timeoutMs = options.body instanceof FormData ? 15000 : 8000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
     const res = await fetch(url, {
       ...options,
       headers,
+      signal: options.signal || controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const data = await res.json().catch(() => null);
 
@@ -52,8 +59,12 @@ export async function apiRequest<T = any>(
 
     return data;
   } catch (err: any) {
+    clearTimeout(timeoutId);
     if (err instanceof ApiError) {
       throw err;
+    }
+    if (err?.name === 'AbortError') {
+      throw new ApiError('Request timed out. Server is taking too long to respond.', 408);
     }
     throw new ApiError(
       err?.message || 'Network error: could not connect to backend server',
